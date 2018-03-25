@@ -1,0 +1,137 @@
+linezolid suspension
+ciprofloxacin iv
+sulfadiazine
+imipenem-cilastatin
+levofloxacin
+streptomycin sulfate
+nitrofurantoin macrocrystal
+moxifloxacin
+neo*iv*tobramycin sulfate
+amikacin inhalation
+azithromycin
+*nf* cefixime suspension
+vancomycin oral liquid
+ciprofloxacin in d5w
+colistin
+piperacillin sodium
+erythromycin ethylsuccinate suspension
+gentamicin
+sulfameth/trimethoprim
+sulfasalazine_
+clindamycin solution
+oxacillin
+erythromycin
+neo*iv*metronidazole
+amoxicillin-clavulanate susp
+neo*iv*oxacillin
+sulfasalazine
+quinupristin/dalfopristin
+*nf* cefotaxime
+tobramycin
+tobramycin sulfate
+neo*iv*piperacillin-tazobactam
+dicloxacillin
+amoxicillin trihydrate
+ciprofloxacin hcl
+vancomycin antibiotic lock
+polymyxin b sulfate
+metronidazole oral suspension
+neo*iv*penicillin g potassium
+azithromycin
+cefpodoxime proxetil
+demeclocycline hcl
+ampicillin sodium
+neo*iv*clindamycin
+paromomycin sulfate
+sulfameth/trimethoprim ss
+sulfameth/trimethoprim ds
+ciprofloxacin
+*nf* nafcillin sodium
+telavancin *nf*
+sulfamethoxazole/trimethoprim
+gentamicin sulfate
+moxifloxacin hcl
+amoxicillin oral susp.
+nitrofurantoin (macrodantin)
+penicillin v potassium
+*nf* moxifloxacin
+tigecycline
+nitrofurantoin monohyd (macrobid)
+*nf* ceftaroline
+*nf* ertapenem sodium
+demeclocycline
+gatifloxacin
+imipenem-cilastatin *nf*
+ampicillin
+dapsone
+erythromycin ethylsuccinate
+neo*iv*ceftriaxone
+isoniazid
+ampicillin sodium/sulbactam
+vancomycin enema
+rifabutin
+cefepime
+cefuroxime
+linezolid
+cefuroxime axetil
+aztreonam
+sulfamethoxazole-trimethoprim
+sulfasalazine dr
+daptomycin
+cefazolin
+nitrofurantoin
+piperacillin-tazobactam na
+neo*iv*vancomycin
+amoxicillin
+trimethoprim
+vancomycin
+nitrofurantoin suspension
+trimethoprim oral soln
+neo*iv*cefazolin
+cefuroxime sodium
+doxycycline hyclate
+bacitracin
+sulfasalazine ec
+sulfameth/trimethoprim
+clarithromycin
+clindamycin
+fosfomycin tromethamine
+doxycycline monohydrate
+ethambutol hcl
+neomycin sulfate
+chloramphenicol na succ
+rifaximin
+nafcillin sodium
+piperacillin-tazobactam
+erythromycin base
+ceftriaxone
+metronidazole
+penicillin g potassium
+piperacillin
+clindamycin suspension
+neo*iv*gentamicin
+nafcillin
+neo*po*azithromycin
+tetracycline hcl
+doripenem *nf*
+ceftaroline
+amikacin
+clindamycin phosphate
+pyrazinamide
+clindamycin hcl
+moxifloxacin
+neo*iv*erythromycin
+metronidazole (flagyl)
+meropenem
+ceftriaxone sodium
+cefadroxil
+paromomycin
+amoxicillin-clavulanic acid
+sulfameth/trimethoprim suspension
+doxycycline hyclate (periostat)
+neo*iv*ampicillin sodium
+amoxicillin-clavulanate susp.
+ampicillin-sulbactam
+erythromycin lactobionate
+neo*iv*cefotaxime
+vancomycin hcl
