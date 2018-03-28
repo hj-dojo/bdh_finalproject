@@ -1,0 +1,28 @@
+itemid,label
+224166,Doppler BP
+224167,Manual Blood Pressure Systolic Left
+227242,Manual Blood Pressure Diastolic Right
+227243,Manual Blood Pressure Systolic Right
+224688,Respiratory Rate (Set)
+224689,Respiratory Rate (spontaneous)
+224690,Respiratory Rate (Total)
+224422,Spont RR
+224643,Manual Blood Pressure Diastolic Left
+220739,GCS - Eye Opening
+220045,Heart Rate
+220050,Arterial Blood Pressure systolic
+220051,Arterial Blood Pressure diastolic
+220052,Arterial Blood Pressure mean
+220179,Non Invasive Blood Pressure systolic
+220180,Non Invasive Blood Pressure diastolic
+220181,Non Invasive Blood Pressure mean
+220210,Respiratory Rate
+223900,GCS - Verbal Response
+223901,GCS - Motor Response
+220277,O2 saturation pulseoxymetry
+223761,Temperature Fahrenheit
+223762,Temperature Celsius
+225309,ART BP Systolic
+225310,ART BP Diastolic
+225312,ART BP mean
+

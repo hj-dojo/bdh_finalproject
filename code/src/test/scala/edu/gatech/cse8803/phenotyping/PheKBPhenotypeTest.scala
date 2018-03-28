@@ -27,7 +27,8 @@ class PheKBPhenotypeTest extends FlatSpec with BeforeAndAfter with Matchers {
 
   "transform" should "give expected results" in {
     val sqlContext = new SQLContext(sparkContext)
-    val (med, lab, diag) = Main.loadRddRawData(sqlContext)
+    val (antibiotics, sepsis_codes, vitals_itemids) = Main.loadStaticRawData(sqlContext)
+    val (med, lab, diag) = Main.loadRddRawData(sqlContext, antibiotics, sepsis_codes, vitals_itemids)
     val rdd = phenotyping.T2dmPhenotype.transform(med, lab, diag)
     val cases = rdd.filter{case (x, t) => t == 1}.map{case (x, t) => x}.collect.toSet
     val controls = rdd.filter{case (x, t) => t == 2}.map{case (x, t) => x}.collect.toSet
