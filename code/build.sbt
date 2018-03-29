@@ -6,7 +6,9 @@ name := "big-data-project"
 
 version := "1.0"
 
-scalaVersion := "2.10.6"
+//scalaVersion := "2.10.6"
+
+scalaVersion := "2.11.8"
 
 resolvers ++= Seq(
   Resolver.sonatypeRepo("releases"),
@@ -14,14 +16,13 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "org.apache.spark" %% "spark-core" % "1.6.1",
-  "org.apache.spark" %% "spark-sql" % "1.6.1",
-  "org.apache.spark" %% "spark-mllib" % "1.6.1",
-  "com.databricks" %% "spark-csv" % "1.4.0",
+  "org.apache.spark" %% "spark-core" % "2.3.0",
+  "org.apache.spark" %% "spark-sql" % "2.3.0",
+  "org.apache.spark" %% "spark-mllib" % "2.3.0",
   "com.github.fommil.netlib" % "all" % "1.1.2"
 )
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.3" % "test"
 
 
 mainClass in assembly := Some("edu.gatech.cse8803.main.Main")

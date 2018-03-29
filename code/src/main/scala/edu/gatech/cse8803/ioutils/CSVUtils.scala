@@ -3,20 +3,23 @@
  */
 package edu.gatech.cse8803.ioutils
 
-import org.apache.spark.sql.SchemaRDD
-import org.apache.spark.sql.SQLContext
-import com.databricks.spark.csv.CsvContext
-
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.DataFrame
 
 object CSVUtils {
-  def loadCSVAsTable(sqlContext: SQLContext, path: String, tableName: String): SchemaRDD = {
-    val data = sqlContext.csvFile(path)
-    data.registerTempTable(tableName)
+  def loadCSVAsTable(ss: SparkSession, path: String, tableName: String): DataFrame = {
+    val data = ss.read.format("csv")
+      .option("sep", ",")
+      .option("inferSchema", "true")
+      .option("header", "true")
+      .load(path)
+
+    data.createOrReplaceTempView(tableName)
     data
   }
 
-  def loadCSVAsTable(sqlContext: SQLContext, path: String): SchemaRDD = {
-    loadCSVAsTable(sqlContext, path, inferTableNameFromPath(path))
+  def loadCSVAsTable(ss: SparkSession, path: String): DataFrame = {
+    loadCSVAsTable(ss, path, inferTableNameFromPath(path))
   }
 
   private val pattern = "(\\w+)(\\.csv)?$".r.unanchored
