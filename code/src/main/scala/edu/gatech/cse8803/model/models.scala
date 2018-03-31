@@ -6,6 +6,11 @@ package edu.gatech.cse8803.model
 
 import java.util.Date
 
-case class ICUStay(subjectID:Int, hadmID:Int, icustayID:Int, intime: Date, outtime: Date)
+case class ICUStay(subjectID:Int, hadmID:Int, icustayID:Int, inTime: Date, outTime: Date)
 
-case class ChartEvents(subjectID:Int, hadmID:Int, icustayID:Int, charttime: Date, value: Double)
+case class ChartEvents(subjectID:Int, hadmID:Int, icustayID:Int, itemID:Int, chartTime: Date, value: Double)
+
+case class Prescriptions(subjectID:Int, hadmID:Int, icustayID:Int, startDate: Date, endDate: Date,
+                         drug: String, value: String, unit: String)
+
+case class MicrobiologyEvents(subjectID:Int, hadmID:Int, chartDate: Date, chartTime: Date)

@@ -5,28 +5,24 @@
 package edu.gatech.cse8803.main
 
 import java.lang.InterruptedException
-import java.time.format.DateTimeFormatter
-import java.time.LocalDate
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.nio.file.{Files, Paths}
 
 import edu.gatech.cse8803.clustering.Metrics
 import edu.gatech.cse8803.features.FeatureConstruction
 import edu.gatech.cse8803.ioutils.CSVUtils
-import edu.gatech.cse8803.model.{ICUStay, ChartEvents}
+import edu.gatech.cse8803.model.{ChartEvents, ICUStay, Prescriptions, MicrobiologyEvents}
 import edu.gatech.cse8803.phenotyping.T2dmPhenotype
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{SQLContext, SparkSession}
 import org.apache.spark.SparkContext._
 import org.apache.spark.streaming.{Duration, Milliseconds, Seconds, StreamingContext}
 import org.apache.spark.mllib.clustering.{GaussianMixture, KMeans, StreamingKMeans}
 import org.apache.spark.mllib.linalg.{DenseMatrix, Matrices, Vector, Vectors}
 import org.apache.spark.mllib.feature.StandardScaler
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.functions._
 import org.apache.spark.streaming.dstream.InputDStream
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.{SparkConf, SparkContext, SparkException}
 
 import scala.collection.mutable.Queue
 import scala.util.Try
@@ -40,6 +36,12 @@ object Main {
 
   val dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
 
+  val BLOOD_CULTURE_SPEC_ITEMID = 70012
+
+  val usage = """
+    Usage: spark-submit --master <masterurl> --class edu.gatech.cse8803.main.Main <target jar> [--reload]
+  """
+
   def main(args: Array[String]) {
     import org.apache.log4j.Logger
     import org.apache.log4j.Level
@@ -47,14 +49,20 @@ object Main {
     Logger.getLogger("org").setLevel(Level.WARN)
     Logger.getLogger("akka").setLevel(Level.WARN)
 
-    val ss = createSession("bdh-project", "local[*]")
-    import ss.implicits._
+    val ss = createSession("BDH Final Project", "local[*]")
+    //    import ss.implicits._
 
+    var reload = true
+    if (args.length > 0) {
+      args.sliding(2, 2).toList.collect {
+        case Array("--reload", argReload: String) => reload = (if (argReload.toInt == 1) true else false)
+      }
+    }
     /** Retrieve static information about  antibiotics, sepsis icd9 codes and vitals itemids */
     val (antibiotics, sepsis_codes, vitals_itemids) = loadStaticRawData(ss)
 
     /** Load patient data including icustay info, chart, prescription and diagnosis events */
-    val (icustays, chartevents) = loadRddRawData(ss, antibiotics, sepsis_codes, vitals_itemids)
+    val (icustays, chartevents, prescriptions) = loadRddRawData(ss, reload, antibiotics, sepsis_codes, vitals_itemids)
 //    val (candidateMedication, candidateLab, candidateDiagnostic) = loadLocalRawData
 //
 //    /** conduct phenotyping */
@@ -124,12 +132,14 @@ object Main {
     * @param ss
     * @return tuple of medication, labresult and diagnostic RDDs
     */
-  def loadRddRawData(ss: SparkSession, antibiotics: Set[String], sepsis_codes: Set[String],
-                     vitals_itemids: Set[Int]): (RDD[ICUStay], RDD[ChartEvents]) = {
+  def loadRddRawData(ss: SparkSession, reload: Boolean, antibiotics: Set[String], sepsis_codes: Set[String],
+                     vitals_itemids: Set[Int]): (RDD[ICUStay], RDD[ChartEvents], RDD[Prescriptions]) = {
+
+    import ss.implicits._
 
     /** First get a list of patients */
     val patients = CSVUtils.loadCSVAsTable(ss, "data/PATIENTS.csv")
-    println("Total patients: " + patients.count)
+//    println("Total patients: " + patients.count)
 //    patients.take(5).foreach(println)
 
     /** Retrieve the list of ICUSTAYS */
@@ -154,12 +164,61 @@ object Main {
     val icustays =  icustays_filtered.rdd.map(row => ICUStay(row.getInt(0), row.getInt(1),
                                                          row.getInt(2), row.getDate(3), row.getDate(4))).cache()
 
-    println("icustays instances: " + icustays.count)
+
+//    println("icustays instances: " + icustays.count)
 //    icustays.take(5).foreach(println)
 
-    /** Retrieve the ICUSTAY IDs to filter chartevents */
+    /** Retrieve the ICUSTAY IDs to filter prescriptions and chartevents */
     val icustay_ids = icustays_filtered.select("ICUSTAY_ID").distinct()
     icustay_ids.createOrReplaceTempView("ICUSTAY_IDS")
+//    val icustay_id_list = icustays_filtered.map(x => x.getInt(0)).collect().toSet
+//    val icustay_id_list_B = ss.sparkContext.broadcast(icustay_id_list)
+
+    /** List of valid precription routes */
+    val routes = List("IV", "PO","PO/NG","ORAL", "IV DRIP", "IV BOLUS")
+    val antibiotics_B = ss.sparkContext.broadcast(antibiotics)
+
+    /** Retrieve Prescriptions */
+    val prescriptions_all = CSVUtils.loadCSVAsTable(ss, "data/PRESCRIPTIONS.csv")
+
+//    println("Total prescriptions : " + prescriptions_all.count)
+//    prescriptions_all.take(5).foreach(println)
+//    prescriptions_all.printSchema()
+
+    val prescriptions_filtered = prescriptions_all.as("p").join(icustay_ids.as("i"),
+            col("p.ICUSTAY_ID") === col("i.ICUSTAY_ID"), "inner")
+              .filter(($"DRUG_TYPE" === "MAIN" ) &&
+                      ($"ROUTE" isin ("IV", "PO","PO/NG","ORAL", "IV DRIP", "IV BOLUS")) &&
+                      (lower($"DRUG") isin(antibiotics_B.value.toList:_*)))
+    println("Filtered  prescriptions : " + prescriptions_filtered.count)
+    prescriptions_filtered.take(5).foreach(println)
+    prescriptions_filtered.printSchema()
+
+    /** Convert to RDD */
+    val prescriptions =  prescriptions_filtered.rdd.map(row => Prescriptions(row.getInt(1), row.getInt(2), row.getInt(3),
+                    row.getDate(4), row.getDate(5), row.getString(7), row.getString(14),row.getString(15) ))
+
+    /** Retrieve the SUBJECT IDs to filter microbiologyevents */
+    val subject_ids = icustays_filtered.select("SUBJECT_ID").distinct()
+    subject_ids.createOrReplaceTempView("SUBJECT_IDS")
+
+    /** Retrieve microbiologyevents */
+    val microbiologyevents_all = CSVUtils.loadCSVAsTable(ss, "data/MICROBIOLOGYEVENTS.csv")
+
+    println("Total microbiologyevents : " + microbiologyevents_all.count)
+    microbiologyevents_all.take(5).foreach(println)
+    microbiologyevents_all.printSchema()
+
+    val microbiologyevents_filtered = microbiologyevents_all.as("m").join(subject_ids.as("s"),
+      col("m.SUBJECT_ID") === col("s.SUBJECT_ID"), "inner")
+      .filter(($"SPEC_ITEMID" === BLOOD_CULTURE_SPEC_ITEMID ))
+    println("Filtered  microbiologyevents : " + microbiologyevents_filtered.count)
+    microbiologyevents_filtered.take(5).foreach(println)
+    microbiologyevents_filtered.printSchema()
+
+    /** Convert to RDD */
+    val microbiologyevents =  microbiologyevents_filtered.rdd.map(row => MicrobiologyEvents(row.getInt(1), row.getInt(2),
+      row.getDate(3), row.getDate(4) ))
 
     val vitals = vitals_itemids.mkString("(", ",", ")")
 //    println("vitals : " + vitals)
@@ -170,68 +229,34 @@ object Main {
 //    println("Total chartevents : " + chartevents_all.count)
 //    chartevents_all.take(5).foreach(println)
 
-    val chartevents_filtered = ss.sql("SELECT HADM_ID, SUBJECT_ID, ICUSTAY_ID,  ITEMID, CHARTTIME, VALUENUM " +
+    val chartevents_filtered = ss.sql("SELECT HADM_ID, SUBJECT_ID, ICUSTAY_ID, ITEMID, CHARTTIME, VALUENUM " +
                              "FROM CHARTEVENTS WHERE CHARTEVENTS.ITEMID IN " + vitals +
                              "AND CHARTEVENTS.ERROR = 0 " +
                              "AND VALUENUM IS NOT NULL " +
                              "AND CHARTEVENTS.ITEMID IN ( " +
                              "SELECT ICUSTAY_ID FROM ICUSTAY_IDS)")
 
-    chartevents_filtered.take(5).foreach(println)
-    println("Total chartevents: " + chartevents_filtered.count())
-    chartevents_filtered.printSchema()
+//    chartevents_filtered.take(5).foreach(println)
+//    println("Total chartevents: " + chartevents_filtered.count())
 
-//    /** load data using Spark SQL into three RDDs and return them
-//      * Hint: You can utilize edu.gatech.cse8803.ioutils.CSVUtils and SQLContext.
-//      *
-//      * Notes:Refer to model/models.scala for the shape of Medication, LabResult, Diagnostic data type.
-//      *       Be careful when you deal with String and numbers in String type.
-//      *       Ignore lab results with missing (empty or NaN) values when these are read in.
-//      *       For dates, use Date_Resulted for labResults and Order_Date for medication.
-//      * */
-//
-//    /** Read medication data, convert medication name to lowercase to support phenotyping */
-//    val medication: RDD[Medication] = CSVUtils.loadCSVAsTable(sqlContext, "data/medication_orders_INPUT.csv")
-//                                              .map(s => Medication(s(1).toString,
-//                                                                   dateFormat.parse(s(11).asInstanceOf[String]),
-//                                                                   s(3).toString.toLowerCase))
-//                                              .cache()
-//    /** Read lab results data, converting lab name to lowercase to support phenotyping */
-//    val lab =  CSVUtils.loadCSVAsTable(sqlContext, "data/lab_results_INPUT.csv")
-//    val lab_filtered =  sqlContext.sql("SELECT Member_ID, Date_Resulted, Result_Name, Numeric_Result " +
-//                                        "FROM lab_results_INPUT WHERE Numeric_Result != '' ")
-//    val labResult: RDD[LabResult] =  lab_filtered.map(s => LabResult(s(0).toString, dateFormat.parse(s(1).asInstanceOf[String]),
-//                                                                     s(2).toString.toLowerCase, parseDouble(s(3).toString)))
-//                                                 .filter(s => !s.value.isNaN)
-//                                                 .cache()
-//
-//    /** Read diagnostic data */
-//    /** encounter_dx can have multiple codes for same encounter, so join creates multiple rows for an encounter **/
-//    val encounter =  CSVUtils.loadCSVAsTable(sqlContext, "data/encounter_INPUT.csv")
-//    val encounter_dx =  CSVUtils.loadCSVAsTable(sqlContext, "data/encounter_dx_INPUT.csv")
-//    val encounter_coded = sqlContext.sql("SELECT Member_ID,Encounter_DateTime, code " +
-//                                         "FROM encounter_INPUT LEFT OUTER JOIN encounter_dx_INPUT " +
-//                                         "ON encounter_INPUT.Encounter_ID = encounter_dx_INPUT.Encounter_ID")
-//
-//    val diagnostic: RDD[Diagnostic] = encounter_coded.map(s => Diagnostic(s(0).toString,
-//                                                                          dateFormat.parse(s(1).asInstanceOf[String]),
-//                                                                          s(2).toString.trim))
-//                                                     .cache()
-    /** TODO: implement your own code here and remove existing placeholder code below */
-    val chartevents: RDD[ChartEvents] =  ss.sparkContext.emptyRDD
+    /** Convert to RDD */
+    val chartevents =  chartevents_filtered.rdd.map(row => ChartEvents(row.getInt(0), row.getInt(1), row.getInt(2),
+                                                                       row.getInt(3), row.getDate(4), row.getDouble(5)))
 
-    (icustays, chartevents)
+
+
+    (icustays, chartevents, prescriptions)
   }
 
   def createSession(appName: String, masterUrl: String): SparkSession = {
     val sparkSession = SparkSession
-      .builder.master(masterUrl)
-      .appName(appName)
+      .builder.appName(appName)
+      .master(masterUrl)
       .getOrCreate()
     sparkSession
   }
 
   def createSession(appName: String): SparkSession = createSession(appName, "local")
 
-  def createSession: SparkSession = createSession("CSE 8803 Homework Two Application", "local")
+  def createSession: SparkSession = createSession("BDH Final Project", "local")
 }
