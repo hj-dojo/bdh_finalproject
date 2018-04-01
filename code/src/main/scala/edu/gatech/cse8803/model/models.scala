@@ -14,5 +14,3 @@ case class Prescriptions(subjectID:Int, hadmID:Int, icustayID:Int, startDate: Da
                          drug: String, value: String, unit: String)
 
 case class MicrobiologyEvents(subjectID:Int, hadmID:Int, chartDate: Date)
-
-case class SuspicionOfInfection(subjectID:Int, hadmID:Int, icustayID:Int, indexDate: Date)
