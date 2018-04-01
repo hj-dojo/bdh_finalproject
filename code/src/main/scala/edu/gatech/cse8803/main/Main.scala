@@ -175,7 +175,7 @@ object Main {
 //    icustays_filtered.take(5).foreach(println)
 
     /** Convert to RDD */
-    val icustays =  icustays_filtered.rdd.map(row => ICUStay(row.getInt(0), row.getInt(1), row.getInt(2),
+    val icustays =  icustays_filtered.rdd.map(row => ICUStay(row.getInt(1), row.getInt(2), row.getInt(0),
                               row.getDate(3), row.getDate(4)))
 //    println("icustays instances: " + icustays.count)
 //    icustays.take(5).foreach(println)
