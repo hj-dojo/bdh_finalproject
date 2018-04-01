@@ -15,7 +15,7 @@ import edu.gatech.cse8803.ioutils.CSVUtils
 import edu.gatech.cse8803.ioutils.ParquetUtils
 import edu.gatech.cse8803.model.{ChartEvents, ICUStay, Prescriptions, MicrobiologyEvents}
 import edu.gatech.cse8803.phenotyping.T2dmPhenotype
-import org.apache.spark.sql.{SQLContext, SparkSession}
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.SparkContext._
 import org.apache.spark.streaming.{Duration, Milliseconds, Seconds, StreamingContext}
 import org.apache.spark.mllib.clustering.{GaussianMixture, KMeans, StreamingKMeans}
@@ -247,7 +247,7 @@ object Main {
     ParquetUtils.saveDataFrameAsParquet(ss, microbiologyevents.toDF(), saveDir+"/microbiologyevents")
 
     val vitals = vitals_itemids.mkString("(", ",", ")")
-//    println("vitals : " + vitals)
+    val vitals_B = ss.sparkContext.broadcast(vitals_itemids)
 
     /** Retrieve Chartevents */
     val chartevents_all = CSVUtils.loadCSVAsTable(ss, "data/CHARTEVENTS.csv")
@@ -255,19 +255,18 @@ object Main {
 //    println("Total chartevents : " + chartevents_all.count)
 //    chartevents_all.take(5).foreach(println)
 
-    val chartevents_filtered = ss.sql("SELECT HADM_ID, SUBJECT_ID, ICUSTAY_ID, ITEMID, CHARTTIME, VALUENUM " +
-                             "FROM CHARTEVENTS WHERE CHARTEVENTS.ITEMID IN " + vitals +
-                             "AND CHARTEVENTS.ERROR = 0 " +
-                             "AND VALUENUM IS NOT NULL " +
-                             "AND CHARTEVENTS.ICUSTAY_ID IN ( " +
-                             "SELECT ICUSTAY_ID FROM ICUSTAY_IDS)")
+    val chartevents_filtered = chartevents_all.as("c").join(icustay_ids.as("i"),
+                                col("c.ICUSTAY_ID") === col("i.ICUSTAY_ID"), "inner")
+                      .filter(($"ERROR" === 0 ) &&
+                              ($"ITEMID" isin(vitals_B.value.toList:_*)) &&
+                              ($"VALUENUM".isNotNull ))
 
-//    chartevents_filtered.take(5).foreach(println)
-//    println("Total chartevents: " + chartevents_filtered.count())
+    chartevents_filtered.take(5).foreach(println)
+    println("Total chartevents: " + chartevents_filtered.count())
 
     /** Convert to RDD */
-    val chartevents =  chartevents_filtered.rdd.map(row => ChartEvents(row.getInt(0), row.getInt(1), row.getInt(2),
-                            row.getInt(3), new Date(row.getTimestamp(4).getTime), row.getDouble(5)))
+    val chartevents =  chartevents_filtered.rdd.map(row => ChartEvents(row.getInt(1), row.getInt(2), row.getInt(3),
+                            row.getInt(4), new Date(row.getTimestamp(5).getTime), row.getDouble(9 )))
     println("chartevents instances: " + chartevents.count)
     chartevents.take(5).foreach(println)
 
