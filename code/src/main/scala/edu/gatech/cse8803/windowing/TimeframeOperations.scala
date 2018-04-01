@@ -76,4 +76,11 @@ object TimeframeOperations {
 
     pat_allindexdates
   }
+
+  def aggregateChartEvents(ss: SparkSession, vitals: RDD[ChartEvents]) = {
+
+    vitals.take(10).foreach(x => println(x, x.chartTime.getHours))
+
+  }
+
 }

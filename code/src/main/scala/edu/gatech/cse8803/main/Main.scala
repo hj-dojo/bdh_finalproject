@@ -76,6 +76,9 @@ object Main {
     /** Extract Index dates */
     val pat_indexdates = TimeframeOperations.calculateIndexDate(ss, icustays, prescriptions, microbiologyevents)
 
+    // Get vitals aggregated by hour
+    val agg_vitals = TimeframeOperations.aggregateChartEvents(ss, chartevents)
+
 //    val (candidateMedication, candidateLab, candidateDiagnostic) = loadLocalRawData
 //
 //    /** conduct phenotyping */
@@ -270,7 +273,7 @@ object Main {
 //    println("Total chartevents: " + chartevents_filtered.count())
 
     /** Convert to RDD */
-    val chartevents =  chartevents_filtered.rdd.map(row => ChartEvents(row.getInt(0), row.getInt(1), row.getInt(2),
+    val chartevents =  chartevents_filtered.rdd.map(row => ChartEvents(row.getInt(1), row.getInt(0), row.getInt(2),
                             row.getInt(3), new Date(row.getTimestamp(4).getTime), row.getDouble(5)))
 
 //    println("chartevents instances: " + chartevents.count)
