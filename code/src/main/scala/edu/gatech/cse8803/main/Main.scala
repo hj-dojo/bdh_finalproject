@@ -13,6 +13,7 @@ import edu.gatech.cse8803.clustering.Metrics
 import edu.gatech.cse8803.features.FeatureConstruction
 import edu.gatech.cse8803.ioutils.CSVUtils
 import edu.gatech.cse8803.ioutils.ParquetUtils
+import edu.gatech.cse8803.windowing.TimeframeOperations
 import edu.gatech.cse8803.model.{ChartEvents, ICUStay, Prescriptions, MicrobiologyEvents}
 import edu.gatech.cse8803.phenotyping.T2dmPhenotype
 import org.apache.spark.sql.{SQLContext, SparkSession}
@@ -71,6 +72,9 @@ object Main {
       loadRddRawData(ss, saveDir, antibiotics, sepsis_codes, vitals_itemids)
     else
       loadRddSavedData(ss, saveDir)
+
+    /** Extract Index dates */
+    val pat_indexdates = TimeframeOperations.calculateIndexDate(ss, icustays, prescriptions, microbiologyevents)
 
 //    val (candidateMedication, candidateLab, candidateDiagnostic) = loadLocalRawData
 //
@@ -147,6 +151,8 @@ object Main {
 
     import ss.implicits._
 
+//    ss.udf.register("getYearDiff", getYearDiff _)
+
     /** First get a list of patients */
     val patients = CSVUtils.loadCSVAsTable(ss, "data/PATIENTS.csv")
 //    println("Total patients: " + patients.count)
@@ -156,8 +162,6 @@ object Main {
     val icustays_all = CSVUtils.loadCSVAsTable(ss, "data/ICUSTAYS.csv")
 //    println("Total icustays: " + icustays_all.count)
 //    icustays_all.take(5).foreach(println)
-
-//    ss.udf.register("getYearDiff", getYearDiff _)
 
     /** Filter ICUSTAYS to retrieve patients >= 15yrs with metavision as the DBSOurce */
     val icustays_filtered = ss.sql("SELECT ICUSTAY_ID, ICUSTAYS.SUBJECT_ID, HADM_ID, " +
@@ -182,8 +186,6 @@ object Main {
     /** Retrieve the ICUSTAY IDs to filter prescriptions and chartevents */
     val icustay_ids = icustays_filtered.select("ICUSTAY_ID").distinct()
     icustay_ids.createOrReplaceTempView("ICUSTAY_IDS")
-    val icustay_id_list = icustays_filtered.map(x => x.getInt(0)).collect().toSet
-    val icustay_id_list_B = ss.sparkContext.broadcast(icustay_id_list)
 
     /** List of valid precription routes */
     val routes = List("IV", "PO","PO/NG","ORAL", "IV DRIP", "IV BOLUS")
@@ -201,8 +203,9 @@ object Main {
               .filter(($"DRUG_TYPE" === "MAIN" ) &&
                       ($"ROUTE" isin ("IV", "PO","PO/NG","ORAL", "IV DRIP", "IV BOLUS")) &&
                       (lower($"DRUG") isin(antibiotics_B.value.toList:_*)))
-    println("Filtered  prescriptions : " + prescriptions_filtered.count)
-    prescriptions_filtered.take(5).foreach(println)
+
+//    println("Filtered  prescriptions : " + prescriptions_filtered.count)
+//    prescriptions_filtered.take(5).foreach(println)
 
     /** Convert to RDD */
     val prescriptions =  prescriptions_filtered.rdd.map(row =>
@@ -211,8 +214,8 @@ object Main {
                       if (row.isNullAt(5)) new Date(0) else new Date(row.getTimestamp(5).getTime),
                       row.getString(7), row.getString(14),row.getString(15) ))
 
-    println("prescriptions instances: " + prescriptions.count)
-    prescriptions.take(5).foreach(println)
+//    println("prescriptions instances: " + prescriptions.count)
+//    prescriptions.take(5).foreach(println)
 
     /** Store to reduce processing time in subsequent runs */
     ParquetUtils.saveDataFrameAsParquet(ss, prescriptions.toDF(), saveDir+"/prescriptions")
@@ -224,24 +227,25 @@ object Main {
     /** Retrieve microbiologyevents */
     val microbiologyevents_all = CSVUtils.loadCSVAsTable(ss, "data/MICROBIOLOGYEVENTS.csv")
 
-    println("Total microbiologyevents : " + microbiologyevents_all.count)
-    microbiologyevents_all.take(5).foreach(println)
-    microbiologyevents_all.printSchema()
+//    println("Total microbiologyevents : " + microbiologyevents_all.count)
+//    microbiologyevents_all.take(5).foreach(println)
+//    microbiologyevents_all.printSchema()
 
     val microbiologyevents_filtered = microbiologyevents_all.as("m").join(subject_ids.as("s"),
       col("m.SUBJECT_ID") === col("s.SUBJECT_ID"), "inner")
       .filter(($"SPEC_ITEMID" === BLOOD_CULTURE_SPEC_ITEMID ))
-    println("Filtered  microbiologyevents : " + microbiologyevents_filtered.count)
-    microbiologyevents_filtered.take(5).foreach(println)
-    microbiologyevents_filtered.printSchema()
+
+//    println("Filtered  microbiologyevents : " + microbiologyevents_filtered.count)
+//    microbiologyevents_filtered.take(5).foreach(println)
+//    microbiologyevents_filtered.printSchema()
 
     /** Convert to RDD, use charttime if present, else use chartdate */
     val microbiologyevents =  microbiologyevents_filtered.rdd.map(row => MicrobiologyEvents(
                     row.getInt(1), row.getInt(2),
                     if (row.isNullAt(4)) new Date(row.getTimestamp(3).getTime) else new Date(row.getTimestamp(4).getTime)))
 
-    println("microbiology instances: " + microbiologyevents.count)
-    microbiologyevents.take(5).foreach(println)
+//    println("microbiology instances: " + microbiologyevents.count)
+//    microbiologyevents.take(5).foreach(println)
 
     /** Store to reduce processing time in subsequent runs */
     ParquetUtils.saveDataFrameAsParquet(ss, microbiologyevents.toDF(), saveDir+"/microbiologyevents")
@@ -268,8 +272,9 @@ object Main {
     /** Convert to RDD */
     val chartevents =  chartevents_filtered.rdd.map(row => ChartEvents(row.getInt(0), row.getInt(1), row.getInt(2),
                             row.getInt(3), new Date(row.getTimestamp(4).getTime), row.getDouble(5)))
-    println("chartevents instances: " + chartevents.count)
-    chartevents.take(5).foreach(println)
+
+//    println("chartevents instances: " + chartevents.count)
+//    chartevents.take(5).foreach(println)
 
     /** Store to reduce processing time in subsequent runs */
     ParquetUtils.saveDataFrameAsParquet(ss, chartevents.toDF(), saveDir+"/chartevents")
@@ -287,12 +292,24 @@ object Main {
     import ss.implicits._
 
     val icustays = ParquetUtils.loadParquetAsDataFrame(ss, saveDir+"/icustays").as[ICUStay].rdd
+    println("icustays instances: " + icustays.count)
+    icustays.take(5).foreach(println)
+
     val chartevents = ParquetUtils.loadParquetAsDataFrame(ss, saveDir+"/chartevents").as[ChartEvents].rdd
+    println("chartevents instances: " + chartevents.count)
+    chartevents.take(5).foreach(println)
+
     val prescriptions = ParquetUtils.loadParquetAsDataFrame(ss, saveDir+"/prescriptions").as[Prescriptions].rdd
+    println("prescriptions instances: " + prescriptions.count)
+    prescriptions.take(5).foreach(println)
+
     val microbiologyevents = ParquetUtils.loadParquetAsDataFrame(ss, saveDir+"/microbiologyevents").as[MicrobiologyEvents].rdd
+    println("microbiologyevents instances: " + microbiologyevents.count)
+    microbiologyevents.take(5).foreach(println)
 
     println("icustays count: " + icustays.count() + " chartevents count: " + chartevents.count() +
       " prescriptions count: " + prescriptions.count() + " microbiologyevents count: " + microbiologyevents.count())
+
     (icustays, chartevents, prescriptions, microbiologyevents)
   }
 
