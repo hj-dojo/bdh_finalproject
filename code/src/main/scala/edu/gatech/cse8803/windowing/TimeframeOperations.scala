@@ -17,7 +17,7 @@ object TimeframeOperations {
     *
     */
   def calculateIndexDate(ss: SparkSession, icustays: RDD[ICUStay], prescriptions: RDD[Prescriptions],
-              microbiologyEvents: RDD[MicrobiologyEvents]): RDD[(Int, Date)] = {
+              microbiologyEvents: RDD[MicrobiologyEvents]): RDD[(Int, Date, Int)] = {
 
     /* Map hadm_ids to antibiotics dates */
     val pat_abxdates = prescriptions.map(x => (x.hadmID, x.startDate))
@@ -66,7 +66,11 @@ object TimeframeOperations {
       * Get the icustayid (not hadmid) and the index date if present, or icu outtime */
     val pat_allindexdates = icustays.map(x => (x.hadmID, x))
                                .leftOuterJoin(pat_index_dates)
-                               .map(x => (x._2._1.icustayID, x._2._2.getOrElse(x._2._1.outTime)))
+                               .map(x => (x._1, x._2._2.getOrElse(x._2._1.outTime), if (x._2._2 == None) 0 else 1))
+                               .cache
+
+    // println(pat_allindexdates.filter(x => x._3 == 0).count)
+    // println(pat_allindexdates.filter(x => x._3 == 1).count)
 
     println("patient index dates count :" + pat_allindexdates.count())
 
