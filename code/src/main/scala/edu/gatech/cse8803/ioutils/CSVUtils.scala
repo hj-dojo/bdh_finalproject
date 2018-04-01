@@ -8,7 +8,7 @@ import org.apache.spark.sql.DataFrame
 
 object CSVUtils {
   def loadCSVAsTable(ss: SparkSession, path: String, tableName: String): DataFrame = {
-    val data = ss.read.format("csv")
+    val data = ss.read.format("org.apache.spark.sql.execution.datasources.csv.CSVFileFormat")
       .option("sep", ",")
       .option("inferSchema", "true")
       .option("header", "true")
