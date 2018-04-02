@@ -6,11 +6,10 @@ package edu.gatech.cse8803.main
 
 import java.lang.InterruptedException
 import java.text.SimpleDateFormat
-import java.sql.Date
+import java.sql.Timestamp
 import java.io.File
 
-import edu.gatech.cse8803.clustering.Metrics
-import edu.gatech.cse8803.features.FeatureConstruction
+import edu.gatech.cse8803.features.FeatureConstruction._
 import edu.gatech.cse8803.ioutils.CSVUtils
 import edu.gatech.cse8803.ioutils.ParquetUtils
 import edu.gatech.cse8803.windowing.TimeframeOperations
@@ -26,6 +25,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
 import org.apache.spark.streaming.dstream.InputDStream
 import org.apache.spark.{SparkConf, SparkContext, SparkException}
+import org.apache.commons.io.FileUtils
 
 import scala.collection.mutable.Queue
 import scala.util.Try
@@ -42,7 +42,7 @@ object Main {
   val BLOOD_CULTURE_SPEC_ITEMID = 70012
 
   val usage = """
-    Usage: spark-submit --master <masterurl> --class edu.gatech.cse8803.main.Main <target jar> [--reload] [--savedir dirpath]
+    Usage: spark-submit --master <masterurl> --class edu.gatech.cse8803.main.Main <target jar> [--reload 0/1] [--savedir dirpath]
   """
 
   def main(args: Array[String]) {
@@ -54,8 +54,7 @@ object Main {
 
     val ss = createSession("BDH Final Project", "local[*]")
 
-    println("Input args: " + args.mkString(","))
-    var reload = true
+    var reload = false
     var saveDir = "output"
     if (args.length > 0) {
       args.sliding(2, 2).toList.collect {
@@ -66,15 +65,18 @@ object Main {
 
     /** Retrieve static information about  antibiotics, sepsis icd9 codes and vitals itemids */
     val (antibiotics, sepsis_codes, vitals_itemids) = loadStaticRawData(ss)
+    val saveDirFile = new File(saveDir)
 
     /** Load patient data including icustay info, chart, prescription and microbiology events */
-    val (icustays, chartevents, prescriptions, microbiologyevents) = if (!new File(saveDir).exists)
+    val (icustays, chartevents, prescriptions, microbiologyevents) = if (reload || !saveDirFile.exists)
       loadRddRawData(ss, saveDir, antibiotics, sepsis_codes, vitals_itemids)
     else
       loadRddSavedData(ss, saveDir)
 
     /** Extract Index dates */
     val pat_indexdates = TimeframeOperations.calculateIndexDate(ss, icustays, prescriptions, microbiologyevents)
+
+    val featureTuples = constructChartEventsFeatureTuple(pat_indexdates, chartevents)
 
     // Get vitals aggregated by hour
     val agg_vitals = TimeframeOperations.aggregateChartEvents(ss, chartevents)
@@ -154,6 +156,9 @@ object Main {
 
     import ss.implicits._
 
+    /** Delete output path is it exists */
+    FileUtils.deleteDirectory(new File(saveDir))
+
 //    ss.udf.register("getYearDiff", getYearDiff _)
 
     /** First get a list of patients */
@@ -168,20 +173,21 @@ object Main {
 
     /** Filter ICUSTAYS to retrieve patients >= 15yrs with metavision as the DBSOurce */
     val icustays_filtered = ss.sql("SELECT ICUSTAY_ID, ICUSTAYS.SUBJECT_ID, HADM_ID, " +
-                                  "to_date(ICUSTAYS.INTIME) as INTIME, to_date(ICUSTAYS.OUTTIME) as OUTTIME " +
+                                  "to_timestamp(ICUSTAYS.INTIME) as INTIME, to_timestamp(ICUSTAYS.OUTTIME) as OUTTIME " +
                                   "FROM ICUSTAYS INNER JOIN PATIENTS " +
                                   "ON ICUSTAYS.SUBJECT_ID = PATIENTS.SUBJECT_ID " +
                                   "WHERE ICUSTAYS.DBSOURCE = 'metavision' " +
-                                  "AND datediff(INTIME, to_date(PATIENTS.DOB))/365.2 >= 15.0")
+                                  "AND datediff(INTIME, PATIENTS.DOB)/365.2 >= 15.0")
 
 //    println("Total icustays_filtered: " + icustays_filtered.count)
 //    icustays_filtered.take(5).foreach(println)
 
     /** Convert to RDD */
     val icustays =  icustays_filtered.rdd.map(row => ICUStay(row.getInt(1), row.getInt(2), row.getInt(0),
-                              row.getDate(3), row.getDate(4)))
+                              row.getTimestamp(3), row.getTimestamp(4)))
+
 //    println("icustays instances: " + icustays.count)
-//    icustays.take(5).foreach(println)
+    icustays.take(5).foreach(println)
 
     /** Store to reduce processing time in subsequent runs */
     ParquetUtils.saveDataFrameAsParquet(ss, icustays.toDF(), saveDir+"/icustays")
@@ -213,12 +219,12 @@ object Main {
     /** Convert to RDD */
     val prescriptions =  prescriptions_filtered.rdd.map(row =>
                     Prescriptions(row.getInt(1), row.getInt(2), row.getInt(3),
-                      if (row.isNullAt(4)) new Date(0) else new Date(row.getTimestamp(4).getTime),
-                      if (row.isNullAt(5)) new Date(0) else new Date(row.getTimestamp(5).getTime),
+                      if (row.isNullAt(4)) new Timestamp(0) else row.getTimestamp(4),
+                      if (row.isNullAt(5)) new Timestamp(0) else row.getTimestamp(5),
                       row.getString(7), row.getString(14),row.getString(15) ))
 
 //    println("prescriptions instances: " + prescriptions.count)
-//    prescriptions.take(5).foreach(println)
+    prescriptions.take(5).foreach(println)
 
     /** Store to reduce processing time in subsequent runs */
     ParquetUtils.saveDataFrameAsParquet(ss, prescriptions.toDF(), saveDir+"/prescriptions")
@@ -245,10 +251,10 @@ object Main {
     /** Convert to RDD, use charttime if present, else use chartdate */
     val microbiologyevents =  microbiologyevents_filtered.rdd.map(row => MicrobiologyEvents(
                     row.getInt(1), row.getInt(2),
-                    if (row.isNullAt(4)) new Date(row.getTimestamp(3).getTime) else new Date(row.getTimestamp(4).getTime)))
+                    if (row.isNullAt(4)) row.getTimestamp(3) else row.getTimestamp(4)))
 
 //    println("microbiology instances: " + microbiologyevents.count)
-//    microbiologyevents.take(5).foreach(println)
+    microbiologyevents.take(5).foreach(println)
 
     /** Store to reduce processing time in subsequent runs */
     ParquetUtils.saveDataFrameAsParquet(ss, microbiologyevents.toDF(), saveDir+"/microbiologyevents")
@@ -274,13 +280,16 @@ object Main {
 
     /** Convert to RDD */
     val chartevents =  chartevents_filtered.rdd.map(row => ChartEvents(row.getInt(1), row.getInt(0), row.getInt(2),
-                            row.getInt(3), new Date(row.getTimestamp(4).getTime), row.getDouble(5)))
+                            row.getInt(3), row.getTimestamp(4), row.getDouble(5)))
 
 //    println("chartevents instances: " + chartevents.count)
-//    chartevents.take(5).foreach(println)
+    chartevents.take(5).foreach(println)
 
     /** Store to reduce processing time in subsequent runs */
     ParquetUtils.saveDataFrameAsParquet(ss, chartevents.toDF(), saveDir+"/chartevents")
+
+    println("icustays count: " + icustays.count() + " chartevents count: " + chartevents.count() +
+      " prescriptions count: " + prescriptions.count() + " microbiologyevents count: " + microbiologyevents.count())
 
     (icustays, chartevents, prescriptions, microbiologyevents)
   }
