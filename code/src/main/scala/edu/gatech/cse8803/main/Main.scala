@@ -9,7 +9,7 @@ import java.text.SimpleDateFormat
 import java.sql.Timestamp
 import java.io.File
 
-import edu.gatech.cse8803.features.FeatureConstruction
+import edu.gatech.cse8803.features.FeatureConstruction._
 import edu.gatech.cse8803.ioutils.CSVUtils
 import edu.gatech.cse8803.ioutils.ParquetUtils
 import edu.gatech.cse8803.windowing.TimeframeOperations
@@ -75,6 +75,11 @@ object Main {
 
     /** Extract Index dates */
     val pat_indexdates = TimeframeOperations.calculateIndexDate(ss, icustays, prescriptions, microbiologyevents)
+
+    val featureTuples = constructChartEventsFeatureTuple(pat_indexdates, chartevents)
+
+    // Get vitals aggregated by hour
+    val agg_vitals = TimeframeOperations.aggregateChartEvents(ss, chartevents)
 
 //    val (candidateMedication, candidateLab, candidateDiagnostic) = loadLocalRawData
 //
@@ -178,8 +183,9 @@ object Main {
 //    icustays_filtered.take(5).foreach(println)
 
     /** Convert to RDD */
-    val icustays =  icustays_filtered.rdd.map(row => ICUStay(row.getInt(0), row.getInt(1), row.getInt(2),
+    val icustays =  icustays_filtered.rdd.map(row => ICUStay(row.getInt(1), row.getInt(2), row.getInt(0),
                               row.getTimestamp(3), row.getTimestamp(4)))
+
 //    println("icustays instances: " + icustays.count)
     icustays.take(5).foreach(println)
 
@@ -273,7 +279,7 @@ object Main {
 //    println("Total chartevents: " + chartevents_filtered.count())
 
     /** Convert to RDD */
-    val chartevents =  chartevents_filtered.rdd.map(row => ChartEvents(row.getInt(0), row.getInt(1), row.getInt(2),
+    val chartevents =  chartevents_filtered.rdd.map(row => ChartEvents(row.getInt(1), row.getInt(0), row.getInt(2),
                             row.getInt(3), row.getTimestamp(4), row.getDouble(5)))
 
 //    println("chartevents instances: " + chartevents.count)
