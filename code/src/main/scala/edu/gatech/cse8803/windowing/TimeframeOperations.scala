@@ -3,21 +3,21 @@
   */
 package edu.gatech.cse8803.windowing
 
-import java.sql.Date
+import java.sql.Timestamp
 
 import edu.gatech.cse8803.model.{ChartEvents, ICUStay, Prescriptions, MicrobiologyEvents}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 
 object TimeframeOperations {
-  /* Specify milliseconds per hour to use to calculate time diff in hours */
+  /* Specify milliseconds per hour to use to calculate time difference in hours */
   val MILLISPERHOUR = 3600000.0
 
   /** Calculate Index date as the time of the first suspicion of infection
     *
     */
   def calculateIndexDate(ss: SparkSession, icustays: RDD[ICUStay], prescriptions: RDD[Prescriptions],
-              microbiologyEvents: RDD[MicrobiologyEvents]): RDD[(Int, Date)] = {
+              microbiologyEvents: RDD[MicrobiologyEvents]): RDD[(Int, Timestamp, Int)] = {
 
     /* Map hadm_ids to antibiotics dates */
     val pat_abxdates = prescriptions.map(x => (x.hadmID, x.startDate))
@@ -66,7 +66,7 @@ object TimeframeOperations {
       * Get the icustayid (not hadmid) and the index date if present, or icu outtime */
     val pat_allindexdates = icustays.map(x => (x.hadmID, x))
                                .leftOuterJoin(pat_index_dates)
-                               .map(x => (x._2._1.icustayID, x._2._2.getOrElse(x._2._1.outTime)))
+                               .map(x => (x._2._1.icustayID, x._2._2.getOrElse(x._2._1.outTime), if (x._2._2.isEmpty) 0 else 1))
 
     println("patient index dates count :" + pat_allindexdates.count())
 
