@@ -69,8 +69,8 @@ object TimeframeOperations {
                                .map(x => (x._1, x._2._2.getOrElse(x._2._1.outTime), if (x._2._2 == None) 0 else 1))
                                .cache
 
-    // println(pat_allindexdates.filter(x => x._3 == 0).count)
-    // println(pat_allindexdates.filter(x => x._3 == 1).count)
+    println("Non-septic patients (control): " + pat_allindexdates.filter(x => x._3 == 0).count)
+    println("Septic patients (case): " + pat_allindexdates.filter(x => x._3 == 1).count)
 
     println("patient index dates count :" + pat_allindexdates.count())
 
@@ -79,7 +79,7 @@ object TimeframeOperations {
 
   def aggregateChartEvents(ss: SparkSession, vitals: RDD[ChartEvents]) = {
 
-    vitals.take(10).foreach(x => println(x, x.chartTime.getHours))
+    vitals.take(10).foreach(println)
 
   }
 
