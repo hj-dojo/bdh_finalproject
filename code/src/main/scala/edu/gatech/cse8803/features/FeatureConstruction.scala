@@ -6,14 +6,12 @@ package edu.gatech.cse8803.features
 import java.sql.Timestamp
 
 import edu.gatech.cse8803.model.ChartEvents
+import org.apache.spark.ml.feature.LabeledPoint
+import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.sql.{SQLContext, SaveMode, SparkSession}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions._
 import org.apache.spark.rdd.RDD
-import org.apache.spark.mllib.linalg.{Vector, Vectors}
-import org.apache.spark.mllib.linalg.distributed.{CoordinateMatrix, MatrixEntry}
-import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.mllib.util.MLUtils
 
 object FeatureConstruction {
 
@@ -69,11 +67,7 @@ object FeatureConstruction {
 
     featuresDF.take(5).foreach(println)
 
-    // convert DataFrame columns
-    val convertedVecDF = MLUtils.convertVectorColumnsToML(featuresDF)
-
-    convertedVecDF.take(5).foreach(println)
-    convertedVecDF.write.mode(SaveMode.Overwrite).format("libsvm").save(saveDir+"/svmoutput")
+    featuresDF.write.mode(SaveMode.Overwrite).format("libsvm").save(saveDir+"/svmoutput")
 
 //    /* Get the hadmid to label mapping */
 //    val pat_labels = pat_features.keys.collect().toMap
