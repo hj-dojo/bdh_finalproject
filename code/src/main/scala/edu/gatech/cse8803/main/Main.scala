@@ -16,18 +16,11 @@ import edu.gatech.cse8803.windowing.TimeframeOperations
 import edu.gatech.cse8803.model.{ChartEvents, ICUStay, Prescriptions, MicrobiologyEvents}
 import edu.gatech.cse8803.phenotyping.T2dmPhenotype
 import org.apache.spark.sql.{SQLContext, SparkSession}
-import org.apache.spark.SparkContext._
-import org.apache.spark.streaming.{Duration, Milliseconds, Seconds, StreamingContext}
-import org.apache.spark.mllib.clustering.{GaussianMixture, KMeans, StreamingKMeans}
-import org.apache.spark.mllib.linalg.{DenseMatrix, Matrices, Vector, Vectors}
 import org.apache.spark.mllib.feature.StandardScaler
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
-import org.apache.spark.streaming.dstream.InputDStream
-import org.apache.spark.{SparkConf, SparkContext, SparkException}
 import org.apache.commons.io.FileUtils
 
-import scala.collection.mutable.Queue
 import scala.util.Try
 import scala.io.Source
 
@@ -76,7 +69,7 @@ object Main {
     /** Extract Index dates */
     val pat_indexdates = TimeframeOperations.calculateIndexDate(ss, icustays, prescriptions, microbiologyevents)
 
-    val featureTuples = constructChartEventsFeatureTuple(pat_indexdates, chartevents)
+    val featureTuples = constructChartEventsFeatureTuple(ss, saveDir, pat_indexdates, chartevents)
 
     // Get vitals aggregated by hour
     val agg_vitals = TimeframeOperations.aggregateChartEvents(ss, chartevents)
@@ -304,20 +297,20 @@ object Main {
     import ss.implicits._
 
     val icustays = ParquetUtils.loadParquetAsDataFrame(ss, saveDir+"/icustays").as[ICUStay].rdd
-    println("icustays instances: " + icustays.count)
-    icustays.take(5).foreach(println)
+//    println("icustays instances: " + icustays.count)
+//    icustays.take(5).foreach(println)
 
     val chartevents = ParquetUtils.loadParquetAsDataFrame(ss, saveDir+"/chartevents").as[ChartEvents].rdd
-    println("chartevents instances: " + chartevents.count)
-    chartevents.take(5).foreach(println)
+//    println("chartevents instances: " + chartevents.count)
+//    chartevents.take(5).foreach(println)
 
     val prescriptions = ParquetUtils.loadParquetAsDataFrame(ss, saveDir+"/prescriptions").as[Prescriptions].rdd
-    println("prescriptions instances: " + prescriptions.count)
-    prescriptions.take(5).foreach(println)
+//    println("prescriptions instances: " + prescriptions.count)
+//    prescriptions.take(5).foreach(println)
 
     val microbiologyevents = ParquetUtils.loadParquetAsDataFrame(ss, saveDir+"/microbiologyevents").as[MicrobiologyEvents].rdd
-    println("microbiologyevents instances: " + microbiologyevents.count)
-    microbiologyevents.take(5).foreach(println)
+//    println("microbiologyevents instances: " + microbiologyevents.count)
+//    microbiologyevents.take(5).foreach(println)
 
     println("icustays count: " + icustays.count() + " chartevents count: " + chartevents.count() +
       " prescriptions count: " + prescriptions.count() + " microbiologyevents count: " + microbiologyevents.count())

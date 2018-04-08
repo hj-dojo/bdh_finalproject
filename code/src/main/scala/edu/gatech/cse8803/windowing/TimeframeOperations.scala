@@ -72,7 +72,7 @@ object TimeframeOperations {
     // println(pat_allindexdates.filter(x => x._3 == 0).count)
     // println(pat_allindexdates.filter(x => x._3 == 1).count)
 
-    println("patient index dates count :" + pat_allindexdates.count())
+    println("patient index dates count: " + pat_allindexdates.count())
 
     pat_allindexdates
   }
