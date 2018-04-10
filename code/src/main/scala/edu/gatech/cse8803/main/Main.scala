@@ -14,7 +14,7 @@ import edu.gatech.cse8803.ioutils.CSVUtils
 import edu.gatech.cse8803.ioutils.ParquetUtils
 import edu.gatech.cse8803.windowing.TimeframeOperations
 import edu.gatech.cse8803.model.{ChartEvents, ICUStay, Prescriptions, MicrobiologyEvents}
-import edu.gatech.cse8803.phenotyping.T2dmPhenotype
+import edu.gatech.cse8803.classification.Regression._
 import org.apache.spark.sql.{SQLContext, SparkSession}
 import org.apache.spark.mllib.feature.StandardScaler
 import org.apache.spark.rdd.RDD
@@ -69,49 +69,15 @@ object Main {
     /** Extract Index dates */
     val pat_indexdates = TimeframeOperations.calculateIndexDate(ss, icustays, prescriptions, microbiologyevents)
 
-    val featureTuples = constructChartEventsFeatureTuple(ss, saveDir, pat_indexdates, chartevents)
+    /** Retrieve the label and features vector dataframe */
+    val featureDF = constructFeaturesWithLatestEvents(ss, saveDir, pat_indexdates, chartevents, 4)
+
+    /** Run basic logistic regression */
+    runLogisticRegression(featureDF)
 
     // Get vitals aggregated by hour
     val agg_vitals = TimeframeOperations.aggregateChartEvents(ss, chartevents)
 
-//    val (candidateMedication, candidateLab, candidateDiagnostic) = loadLocalRawData
-//
-//    /** conduct phenotyping */
-//    val phenotypeLabel = T2dmPhenotype.transform(medication, labResult, diagnostic)
-//
-//    /** feature construction with all features */
-//    val featureTuples = sc.union(
-//      FeatureConstruction.constructDiagnosticFeatureTuple(diagnostic),
-//      FeatureConstruction.constructLabFeatureTuple(labResult),
-//      FeatureConstruction.constructMedicationFeatureTuple(medication)
-//    )
-//
-//    val rawFeatures = FeatureConstruction.construct(sc, featureTuples)
-//
-//    val (kMeansPurity, gaussianMixturePurity, streamKmeansPurity, nmfPurity) = testClustering(phenotypeLabel, rawFeatures)
-//    println(f"[All feature] purity of kMeans is: $kMeansPurity%.5f")
-//    println(f"[All feature] purity of GMM is: $gaussianMixturePurity%.5f")
-//    println(f"[All feature] purity of StreamingKMeans is: $streamKmeansPurity%.5f")
-//    println(f"[All feature] purity of NMF is: $nmfPurity%.5f")
-//
-//    /** feature construction with filtered features */
-//    val filteredFeatureTuples = sc.union(
-//      FeatureConstruction.constructDiagnosticFeatureTuple(diagnostic, candidateDiagnostic),
-//      FeatureConstruction.constructLabFeatureTuple(labResult, candidateLab),
-//      FeatureConstruction.constructMedicationFeatureTuple(medication, candidateMedication)
-//    )
-//
-//    val filteredRawFeatures = FeatureConstruction.construct(sc, filteredFeatureTuples)
-//
-//    diagnostic.unpersist(false)
-//    labResult.unpersist(false)
-//    medication.unpersist(false)
-//
-//    val (kMeansPurity2, gaussianMixturePurity2, streamKmeansPurity2, nmfPurity2) = testClustering(phenotypeLabel, filteredRawFeatures)
-//    println(f"[Filtered feature] purity of kMeans is: $kMeansPurity2%.5f")
-//    println(f"[Filtered feature] purity of GMM is: $gaussianMixturePurity2%.5f")
-//    println(f"[Filtered feature] purity of StreamingKMeans is: $streamKmeansPurity2%.5f")
-//    println(f"[Filtered feature] purity of NMF is: $nmfPurity2%.5f")
     ss.stop
   }
 

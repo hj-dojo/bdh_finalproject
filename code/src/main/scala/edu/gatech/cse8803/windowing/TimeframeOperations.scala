@@ -71,7 +71,6 @@ object TimeframeOperations {
 
     println("Non-septic patients (control): " + pat_allindexdates.filter(x => x._3 == 0).count)
     println("Septic patients (case): " + pat_allindexdates.filter(x => x._3 == 1).count)
-
     println("patient index dates count: " + pat_allindexdates.count())
 
     pat_allindexdates
