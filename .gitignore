@@ -9,3 +9,8 @@ out
 CHARTEVENTS.csv
 MICROBIOLOGYEVENTS.csv
 PRESCRIPTIONS.csv
+*.crc
+_SUCCESS
+*.parquet
+code/python/*.png
+code/python/__pycache__

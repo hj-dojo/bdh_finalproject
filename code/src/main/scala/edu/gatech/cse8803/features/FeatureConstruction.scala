@@ -70,10 +70,12 @@ object FeatureConstruction {
       .rdd.groupByKey().map(x => LabeledPoint(x._1._2.toDouble, Vectors.sparse(feature_length, x._2.toArray)))
       .toDF("label","features").coalesce(1)
 
-//    featuresDF.take(5).foreach(println)
-//    featuresDF.printSchema()
+      println("FEATURES")
 
-    featuresDF.write.mode(SaveMode.Overwrite).format("libsvm").save(saveDir+"/svmoutput")
+       featuresDF.take(5).foreach(println)
+       featuresDF.printSchema()
+
+    featuresDF.write.mode(SaveMode.Overwrite).format("libsvm").save(saveDir+"/svmoutput/features" + predWindowDurHrs.toString + "hour")
 
     featuresDF
   }
