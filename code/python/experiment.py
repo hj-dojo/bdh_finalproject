@@ -6,10 +6,11 @@ import matplotlib.pyplot as plt
 from sklearn.datasets import load_svmlight_file
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import normalize
+from sklearn.preprocessing import StandardScaler
 
 
 def get_data_from_svmlight(window):
-	svmdata = load_svmlight_file('../output/svmoutput/features{0}hour/features.libsvm'.format(window), n_features=9)
+	svmdata = load_svmlight_file('../output/svmoutput/features{0}hour/features.libsvm'.format(window), n_features=11)
 	x = svmdata[0]
 	y = svmdata[1]
 	return x, y
@@ -25,18 +26,23 @@ def printMetrics(metrics):
 
 if __name__ == '__main__':
 	
-	X, Y = get_data_from_svmlight('2')
-	X = normalize(X) # normalize feature set
+	X, Y = get_data_from_svmlight('4')
+	#X = normalize(X)
+	X = StandardScaler(with_std=True, with_mean=False).fit_transform(X) # normalize feature set
 
 	print('K-Fold Cross-Validation Metrics')
 	printMetrics(validate.getKFoldMetrics(X, Y, k=5))
+
+	print('Stratified K-Fold Cross-Validation Metrics')
+	printMetrics(validate.getStratifiedKFoldMetrics(X, Y, k=5))
 
 	windows = [1,2,4,6,8]
 	scores = []
 
 	for w in windows:
 		X, Y = get_data_from_svmlight(str(w))
-		X = normalize(X)
+		#X = normalize(X)
+		X = StandardScaler(with_std=True, with_mean=False).fit_transform(X)  # normalize feature set
 
 		xtrain, xtest, ytrain, ytest = train_test_split(X, Y, test_size=0.25, random_state=numpy.random.RandomState(0))
 		ypred = classifier.predict(xtrain, ytrain, xtest)

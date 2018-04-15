@@ -67,6 +67,7 @@ object TimeframeOperations {
     val pat_allindexdates = icustays.map(x => (x.hadmID, x))
                                .leftOuterJoin(pat_index_dates)
                                .map(x => (x._1, x._2._2.getOrElse(x._2._1.outTime), if (x._2._2 == None) 0 else 1))
+                               .distinct()
                                .cache
 
     println("Non-septic patients (control): " + pat_allindexdates.filter(x => x._3 == 0).count)

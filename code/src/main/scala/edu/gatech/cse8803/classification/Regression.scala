@@ -5,6 +5,7 @@ package edu.gatech.cse8803.classification
 
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.ml.feature.StandardScaler
+import org.apache.spark.ml.feature.MinMaxScaler
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
 
@@ -46,9 +47,9 @@ object Regression {
     val mlr = new LogisticRegression()
       .setFeaturesCol("scaledFeatures")
       .setLabelCol("label")
-      .setMaxIter(10)
-      .setRegParam(0.3)
-      .setElasticNetParam(0.8)
+      .setMaxIter(50)
+      .setRegParam(0.001)
+      .setElasticNetParam(1.0)
       .setTol(0.05)
       .setFamily("multinomial")
 

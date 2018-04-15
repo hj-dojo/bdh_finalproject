@@ -14,7 +14,7 @@ def predict(trainX, trainY, testX):
 	# learner = AdaBoostClassifier(n_estimators=100)
 
 	# learner = DecisionTreeClassifier(min_samples_leaf=10)
-	# learner = LogisticRegression()
+	#learner = LogisticRegression()
 	# learner = LinearSVC()
 	# learner = SVC(kernel='poly')
 	# learner = KNeighborsClassifier(n_neighbors=3)

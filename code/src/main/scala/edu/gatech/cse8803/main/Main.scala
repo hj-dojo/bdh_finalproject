@@ -49,10 +49,12 @@ object Main {
 
     var reload = false
     var saveDir = "output"
+    var predWindow = 4
     if (args.length > 0) {
       args.sliding(2, 2).toList.collect {
         case Array("--reload", argReload: String) => reload = (if (argReload.toInt == 1) true else false)
         case Array("--savedir", argSaveDir: String) => saveDir = argSaveDir
+        case Array("--predwindow", argPredWindow: String) => predWindow = argPredWindow.toInt
       }
     }
 
@@ -70,7 +72,7 @@ object Main {
     val pat_indexdates = TimeframeOperations.calculateIndexDate(ss, icustays, prescriptions, microbiologyevents)
 
     /** Retrieve the label and features vector dataframe */
-    val featureDF = constructFeaturesWithLatestEvents(ss, saveDir, pat_indexdates, chartevents, 4)
+    val featureDF = constructFeaturesWithLatestEvents(ss, saveDir, pat_indexdates, chartevents, icustays, predWindow)
 
     /** Run basic logistic regression */
     runLogisticRegression(featureDF)
@@ -132,21 +134,23 @@ object Main {
 
     /** Filter ICUSTAYS to retrieve patients >= 15yrs with metavision as the DBSOurce */
     val icustays_filtered = ss.sql("SELECT ICUSTAY_ID, ICUSTAYS.SUBJECT_ID, HADM_ID, " +
-                                  "to_timestamp(ICUSTAYS.INTIME) as INTIME, to_timestamp(ICUSTAYS.OUTTIME) as OUTTIME " +
+                                  "to_timestamp(ICUSTAYS.INTIME) as INTIME, to_timestamp(ICUSTAYS.OUTTIME) as OUTTIME, " +
+                                  "DOD, ROUND(datediff(INTIME, PATIENTS.DOB)/365.242, 2) as AGE, GENDER, EXPIRE_FLAG " +
                                   "FROM ICUSTAYS INNER JOIN PATIENTS " +
                                   "ON ICUSTAYS.SUBJECT_ID = PATIENTS.SUBJECT_ID " +
                                   "WHERE ICUSTAYS.DBSOURCE = 'metavision' " +
-                                  "AND datediff(INTIME, PATIENTS.DOB)/365.2 >= 15.0")
+                                  "AND ROUND(datediff(INTIME, PATIENTS.DOB)/365.242, 2) >= 15.0")
 
 //    println("Total icustays_filtered: " + icustays_filtered.count)
 //    icustays_filtered.take(5).foreach(println)
 
     /** Convert to RDD */
     val icustays =  icustays_filtered.rdd.map(row => ICUStay(row.getInt(1), row.getInt(2), row.getInt(0),
-                              row.getTimestamp(3), row.getTimestamp(4)))
+                              row.getTimestamp(3), row.getTimestamp(4), row.getTimestamp(5),
+                              row.getDecimal(6).doubleValue(), row.getString(7), row.getInt(8)))
 
 //    println("icustays instances: " + icustays.count)
-    icustays.take(5).foreach(println)
+//    icustays.take(5).foreach(println)
 
     /** Store to reduce processing time in subsequent runs */
     ParquetUtils.saveDataFrameAsParquet(ss, icustays.toDF(), saveDir+"/icustays")
@@ -183,7 +187,7 @@ object Main {
                       row.getString(7), row.getString(14),row.getString(15) ))
 
 //    println("prescriptions instances: " + prescriptions.count)
-    prescriptions.take(5).foreach(println)
+//    prescriptions.take(5).foreach(println)
 
     /** Store to reduce processing time in subsequent runs */
     ParquetUtils.saveDataFrameAsParquet(ss, prescriptions.toDF(), saveDir+"/prescriptions")
@@ -213,7 +217,7 @@ object Main {
                     if (row.isNullAt(4)) row.getTimestamp(3) else row.getTimestamp(4)))
 
 //    println("microbiology instances: " + microbiologyevents.count)
-    microbiologyevents.take(5).foreach(println)
+//    microbiologyevents.take(5).foreach(println)
 
     /** Store to reduce processing time in subsequent runs */
     ParquetUtils.saveDataFrameAsParquet(ss, microbiologyevents.toDF(), saveDir+"/microbiologyevents")
@@ -242,7 +246,7 @@ object Main {
                             row.getInt(3), row.getTimestamp(4), row.getDouble(5)))
 
 //    println("chartevents instances: " + chartevents.count)
-    chartevents.take(5).foreach(println)
+//    chartevents.take(5).foreach(println)
 
     /** Store to reduce processing time in subsequent runs */
     ParquetUtils.saveDataFrameAsParquet(ss, chartevents.toDF(), saveDir+"/chartevents")
