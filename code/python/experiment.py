@@ -26,7 +26,7 @@ def printMetrics(metrics):
 
 if __name__ == '__main__':
 	
-	X, Y = get_data_from_svmlight('4')
+	X, Y = get_data_from_svmlight('2')
 	#X = normalize(X)
 	X = StandardScaler(with_std=True, with_mean=False).fit_transform(X) # normalize feature set
 
