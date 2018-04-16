@@ -14,3 +14,5 @@ _SUCCESS
 *.parquet
 code/python/*.png
 code/python/__pycache__
+*.pyc
+*.png
