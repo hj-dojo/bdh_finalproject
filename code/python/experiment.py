@@ -45,8 +45,8 @@ if __name__ == '__main__':
 		X = StandardScaler(with_std=True, with_mean=False).fit_transform(X)  # normalize feature set
 
 		xtrain, xtest, ytrain, ytest = train_test_split(X, Y, test_size=0.25, random_state=numpy.random.RandomState(0))
-		ypred = classifier.predict(xtrain, ytrain, xtest)
-		ypred = classifier.applyPredictionThresholding(ypred)
+		ypred, yprob = classifier.predict(xtrain, ytrain, xtest)
+		#ypred = classifier.applyPredictionThresholding(yprob)
 		metrics = classifier.getMetrics(ytest, ypred)
 
 		print('{0}-Hour Window'.format(w))
@@ -55,8 +55,8 @@ if __name__ == '__main__':
 		printMetrics(metrics)
 		scores.append(metrics)
 
-		classifier.getPrecisionRecallCurve(ytest, ypred, 'charts/precision-recall-{0}.png'.format(w))
-		classifier.getROCCurve(ytest, ypred, metrics[1], 'charts/roc-{0}.png'.format(w))
+		classifier.getPrecisionRecallCurve(ytest, yprob[:,1], 'charts/precision-recall-{0}.png'.format(w))
+		classifier.getROCCurve(ytest, yprob[:,1], metrics[1], 'charts/roc-{0}.png'.format(w))
 
 
 	scores = numpy.asarray(scores)

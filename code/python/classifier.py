@@ -21,8 +21,7 @@ def predict(trainX, trainY, testX):
 	# learner = KNeighborsClassifier(n_neighbors=3)
 
 	learner.fit(trainX, trainY)
-	return learner.predict_proba(testX)
-
+	return learner.predict(testX), learner.predict_proba(testX)
 
 def getMetrics(truelabels, predictions):
 	accuracy = accuracy_score(truelabels, predictions)
