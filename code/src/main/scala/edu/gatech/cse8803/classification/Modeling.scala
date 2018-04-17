@@ -3,12 +3,14 @@
   */
 package edu.gatech.cse8803.classification
 
-import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel, RandomForestClassifier}
+import org.apache.spark.ml.classification._
 import org.apache.spark.ml.feature.{LabeledPoint, MinMaxScaler, StandardScaler}
 import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, MulticlassClassificationEvaluator}
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
+import org.apache.spark.ml.linalg.DenseVector
+import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 
 object Modeling {
 
@@ -60,6 +62,13 @@ object Modeling {
     reportModelMetrics(featureDF.sparkSession, mlrModel, true)
   }
 
+  /**
+    * Report metrics and model details
+    * @param ss
+    * @param lrModel
+    * @param isMulti
+    * @return
+    */
   def reportModelMetrics(ss: SparkSession, lrModel: LogisticRegressionModel, isMulti: Boolean) = {
 
     import ss.implicits._
@@ -97,6 +106,74 @@ object Modeling {
     lrModel.setThreshold(bestThreshold)
   }
 
+  /**
+    * Evaluate classification metrics given the predictions
+    * @param predictions
+    */
+  def ReportBinaryClassificationMetrics(predictions: DataFrame) = {
+
+    /* Retrieve predictions and labels */
+    val  predictionAndLabels = predictions.select("rawPrediction", "label")
+      .rdd.map(x => (x(0).asInstanceOf[DenseVector](1), x(1).asInstanceOf[Double]))
+
+    /* Evaluate metrics */
+    val metrics = new BinaryClassificationMetrics(predictionAndLabels)
+
+//    // Precision by threshold
+//    val precision = metrics.precisionByThreshold
+//    precision.foreach { case (t, p) =>
+//      println(s"Threshold: $t, Precision: $p")
+//    }
+//
+//    // Recall by threshold
+//    val recall = metrics.recallByThreshold
+//    recall.foreach { case (t, r) =>
+//      println(s"Threshold: $t, Recall: $r")
+//    }
+//
+//    // Precision-Recall Curve
+//    val PRC = metrics.pr
+//
+//    //Compute thresholds used in ROC and PR curves
+//    val thresholds = precision.map(_._1)
+//
+//    // ROC Curve
+//    val roc = metrics.roc
+//    // F-measure
+//    val f1Score = metrics.fMeasureByThreshold
+//    f1Score.foreach { case (t, f) =>
+//      println(s"Threshold: $t, F-score: $f, Beta = 1")
+//    }
+//
+//    val beta = 0.5
+//    val fScore = metrics.fMeasureByThreshold(beta)
+//    f1Score.foreach { case (t, f) =>
+//      println(s"Threshold: $t, F-score: $f, Beta = 0.5")
+//    }
+
+    // AUPRC
+    val auPRC = metrics.areaUnderPR
+    println("Area under precision-recall curve = " + auPRC)
+
+    // AUROC
+    val auROC = metrics.areaUnderROC
+    println("Area under ROC = " + auROC)
+
+    val evaluator = new MulticlassClassificationEvaluator()
+                         .setLabelCol("label")
+                         .setPredictionCol("prediction")
+
+    println("Weighted F-Measure: " + evaluator.setMetricName("f1").evaluate(predictions))
+    println("Weighted Precision: " + evaluator.setMetricName("weightedPrecision").evaluate(predictions))
+    println("weighted Recall: " + evaluator.setMetricName("weightedRecall").evaluate(predictions))
+    println("Accuracy : " + evaluator.setMetricName("accuracy").evaluate(predictions))
+  }
+
+  /**
+    * Run Logistic regression using train/test split for validation and
+    * crossvalidation for parameter selection
+    * @param featureDF
+    */
   def runLogisticRegressionwithValidation(featureDF: DataFrame) =
   {
     val ss = featureDF.sparkSession
@@ -153,26 +230,22 @@ object Modeling {
     // Run cross-validation, and choose the best set of parameters.
     val cvModel = cv.fit(scaledTraining)
 
+    println("Best Params (Binomial Logistic Regression): ")
     println(cvModel.bestModel.extractParamMap())
 
     // Validate with the test
     val predictions = cvModel.transform(scaledTest)
 
-    // Extract relevant metrics
-    println("areaUnderROC: " + evaluator.setMetricName("areaUnderROC").evaluate(predictions))
-    println("areaUnderPR: " + evaluator.setMetricName("areaUnderPR").evaluate(predictions))
-
-    // Define evaluator object
-    val evaluator2 = new MulticlassClassificationEvaluator()
-      .setLabelCol("label")
-      .setPredictionCol("prediction")
-
-    println("F1-Score: " + evaluator2.setMetricName("f1").evaluate(predictions))
-    println("Weighted Precision: " + evaluator2.setMetricName("weightedPrecision").evaluate(predictions))
-    println("weighted Recall: " + evaluator2.setMetricName("weightedRecall").evaluate(predictions))
-    println("Accuracy : " + evaluator2.setMetricName("accuracy").evaluate(predictions))
+    /* Report metrics */
+    println("Metrics (Binomial LogisticRegression): ")
+    ReportBinaryClassificationMetrics(predictions)
   }
 
+  /**
+    * Run RandomForest classifier using train/test split for validation and
+    * crossvalidation for parameter selection
+    * @param featureDF
+    */
   def runRandomForestwithValidation(featureDF: DataFrame) =
   {
     val ss = featureDF.sparkSession
@@ -229,24 +302,163 @@ object Modeling {
     // Run cross-validation, and choose the best set of parameters.
     val cvModel = cv.fit(scaledTraining)
 
+    println("Best Params (RandomForestClassifier): ")
     println(cvModel.bestModel.extractParamMap())
 
-    // Fit the test
+    /* Fit the test */
     val predictions = cvModel.transform(scaledTest)
 
-    // Extract relevant metrics
-    println("areaUnderROC: " + evaluator.setMetricName("areaUnderROC").evaluate(predictions))
-    println("areaUnderPR: " + evaluator.setMetricName("areaUnderPR").evaluate(predictions))
+    /* Report metrics */
+    println("Metrics (RandomForestClassifier): ")
+    ReportBinaryClassificationMetrics(predictions)
+  }
+
+  /**
+    * Run GradientBoostedTrees classifier using train/test split for validation and
+    * crossvalidation for parameter selection
+    * @param featureDF
+    */
+  def runGradientBoostedTreeswithValidation(featureDF: DataFrame) =
+  {
+    val ss = featureDF.sparkSession
+    import ss.implicits._
+
+    // Split data into training (60%) and test (40%)
+    val Array(training, test) = featureDF.randomSplit(Array(0.6, 0.4), seed = 11L)
+    training.cache()
+
+    /** scale features */
+    val scaler = new StandardScaler()
+      .setInputCol("features")
+      .setOutputCol("scaledFeatures")
+      .setWithStd(true)
+      .setWithMean(false)
+
+    // Compute summary statistics by fitting the StandardScaler.
+    val scalerModel = scaler.fit(training)
+
+    // Normalize each feature to have unit standard deviation.
+    val scaledTraining = scalerModel.transform(training)
+    val scaledTest = scalerModel.transform(test)
+
+    // Run training algorithm to build the model
+    // Train a GBT model.
+    val gbt = new GBTClassifier()
+      .setLabelCol("label")
+      .setFeaturesCol("scaledFeatures")
+      .setMaxIter(50)
+      .setSeed(207336481L)
+
+    // We use a ParamGridBuilder to construct a grid of parameters to search over.
+    // TrainValidationSplit will try all combinations of values and determine best model using
+    // the evaluator.
+    val paramGrid = new ParamGridBuilder()
+      .addGrid(gbt.maxBins, Array(13, 25, 31))
+      .addGrid(gbt.maxDepth, Array(3, 4, 6))
+      .build()
 
     // Define evaluator object
-    val evaluator2 = new MulticlassClassificationEvaluator()
+    val evaluator = new BinaryClassificationEvaluator()
       .setLabelCol("label")
-      .setPredictionCol("prediction")
+      .setRawPredictionCol("rawPrediction")
+      .setMetricName("areaUnderROC") // areaUnderROC (default) or areaUnderPR"
 
-    println("F1-Score: " + evaluator2.setMetricName("f1").evaluate(predictions))
-    println("Weighted Precision: " + evaluator2.setMetricName("weightedPrecision").evaluate(predictions))
-    println("weighted Recall: " + evaluator2.setMetricName("weightedRecall").evaluate(predictions))
-    println("Accuracy : " + evaluator2.setMetricName("accuracy").evaluate(predictions))
+    // Setup Cross validator with estimator, evaluator and param grid
+    val cv = new CrossValidator()
+      .setEstimator(gbt)
+      .setEvaluator(evaluator)
+      .setEstimatorParamMaps(paramGrid)
+      .setNumFolds(3)  // Use 3+ in practice
+      .setParallelism(2)  // Evaluate up to 2 parameter settings in parallel
 
+    // Run cross-validation, and choose the best set of parameters.
+    val cvModel = cv.fit(scaledTraining)
+
+    println("Best Params (Gradient Boosted Trees): ")
+    println(cvModel.bestModel.extractParamMap())
+
+    /* Fit the test */
+    val predictions = cvModel.transform(scaledTest)
+
+    /* Report metrics */
+    println("Metrics (Gradient Boosted Trees): ")
+    ReportBinaryClassificationMetrics(predictions)
+  }
+
+  /**
+    * Run  MultiLayerPerceptronclassifier using train/test split for validation and
+    * crossvalidation for parameter selection
+    * @param featureDF
+    */
+  def runMultiLayerPerceptronwithValidation(featureDF: DataFrame) =
+  {
+    val ss = featureDF.sparkSession
+    import ss.implicits._
+
+    // Split data into training (60%) and test (40%)
+    val Array(training, test) = featureDF.randomSplit(Array(0.6, 0.4), seed = 11L)
+    training.cache()
+
+    /** scale features */
+    val scaler = new StandardScaler()
+      .setInputCol("features")
+      .setOutputCol("scaledFeatures")
+      .setWithStd(true)
+      .setWithMean(false)
+
+    // Compute summary statistics by fitting the StandardScaler.
+    val scalerModel = scaler.fit(training)
+
+    // Normalize each feature to have unit standard deviation.
+    val scaledTraining = scalerModel.transform(training)
+    val scaledTest = scalerModel.transform(test)
+
+    // specify layers for the neural network:
+    // input layer of size 12 (features), two intermediate of size 8 and 5
+    // and output of size 2 (classes)
+    val layers = Array[Int](12, 8, 5, 2)
+
+    // Run training algorithm to build the model
+    // Train a GBT model.
+    // create the trainer and set its parameters
+    val mpc = new MultilayerPerceptronClassifier()
+      .setLayers(layers)
+      .setBlockSize(128)
+      .setSeed(207336481L)
+      .setMaxIter(100)
+
+    // We use a ParamGridBuilder to construct a grid of parameters to search over.
+    // TrainValidationSplit will try all combinations of values and determine best model using
+    // the evaluator.
+    val paramGrid = new ParamGridBuilder()
+      .addGrid(mpc.tol, Array(0.0001, 0.001, 0.01, 0.1))
+      .build()
+
+    // Define evaluator object
+    val evaluator = new BinaryClassificationEvaluator()
+      .setLabelCol("label")
+      .setRawPredictionCol("rawPrediction")
+      .setMetricName("areaUnderROC") // areaUnderROC (default) or areaUnderPR"
+
+    // Setup Cross validator with estimator, evaluator and param grid
+    val cv = new CrossValidator()
+      .setEstimator(mpc)
+      .setEvaluator(evaluator)
+      .setEstimatorParamMaps(paramGrid)
+      .setNumFolds(3)  // Use 3+ in practice
+      .setParallelism(2)  // Evaluate up to 2 parameter settings in parallel
+
+    // Run cross-validation, and choose the best set of parameters.
+    val cvModel = cv.fit(scaledTraining)
+
+    println("Best Params (MultilayerPerceptron): ")
+    println(cvModel.bestModel.extractParamMap())
+
+    /* Fit the test */
+    val predictions = cvModel.transform(scaledTest)
+
+    /* Report metrics */
+    println("Metrics (MultilayerPerceptron): ")
+    ReportBinaryClassificationMetrics(predictions)
   }
 }

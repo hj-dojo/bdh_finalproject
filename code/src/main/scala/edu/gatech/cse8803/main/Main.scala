@@ -82,10 +82,16 @@ object Main {
 
     /** Run logistic regression with param search on train/test split for validation */
     /* Comment out since Random Forest gives better results */
-    runLogisticRegressionwithValidation(featureDF)
+    //runLogisticRegressionwithValidation(featureDF)
 
     /** Run RandomForest with param search on train/test split for validation */
     runRandomForestwithValidation(featureDF)
+
+    /** Run GradientBoostedTrees with param search on train/test split for validation */
+    runGradientBoostedTreeswithValidation(featureDF)
+
+    /** Run MultilayerPerceptron with param search on train/test split for validation */
+    runMultiLayerPerceptronwithValidation(featureDF)
 
     /** Commenting out the rest as using average vitals over an observation window size doesn't give as good results
       * as using latest within observation window
