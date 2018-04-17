@@ -10,7 +10,8 @@ from sklearn.metrics import *
 
 def predict(trainX, trainY, testX):
 	# learner = GradientBoostingClassifier(n_estimators=100)
-	learner = RandomForestClassifier(n_estimators=100)
+	#learner = RandomForestClassifier(n_estimators=100,criterion="gini",max_depth=8, random_state=207336481)
+	learner = RandomForestClassifier(n_estimators=100, random_state=207336481)
 	# learner = AdaBoostClassifier(n_estimators=100)
 
 	# learner = DecisionTreeClassifier(min_samples_leaf=10)

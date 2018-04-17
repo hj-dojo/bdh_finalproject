@@ -14,7 +14,7 @@ import edu.gatech.cse8803.ioutils.CSVUtils
 import edu.gatech.cse8803.ioutils.ParquetUtils
 import edu.gatech.cse8803.windowing.TimeframeOperations
 import edu.gatech.cse8803.model.{ChartEvents, ICUStay, Prescriptions, MicrobiologyEvents}
-import edu.gatech.cse8803.classification.Regression._
+import edu.gatech.cse8803.classification.Modeling._
 import org.apache.spark.sql.{SQLContext, SparkSession}
 import org.apache.spark.mllib.feature.StandardScaler
 import org.apache.spark.rdd.RDD
@@ -50,13 +50,18 @@ object Main {
     var reload = false
     var saveDir = "output"
     var predWindow = 4
+    var obsWindow = 24
     if (args.length > 0) {
       args.sliding(2, 2).toList.collect {
         case Array("--reload", argReload: String) => reload = (if (argReload.toInt == 1) true else false)
         case Array("--savedir", argSaveDir: String) => saveDir = argSaveDir
         case Array("--predwindow", argPredWindow: String) => predWindow = argPredWindow.toInt
+        case Array("--obswindow", argObsWindow: String) => obsWindow = argObsWindow.toInt
       }
     }
+
+    println("Running with output Dir: " + saveDir + ", reload flag: " + reload +
+            ", prediction window: " + predWindow + ", observation window: " + obsWindow)
 
     /** Retrieve static information about  antibiotics, sepsis icd9 codes and vitals itemids */
     val (antibiotics, sepsis_codes, vitals_itemids) = loadStaticRawData(ss)
@@ -71,15 +76,29 @@ object Main {
     /** Extract Index dates */
     val pat_indexdates = TimeframeOperations.calculateIndexDate(ss, icustays, prescriptions, microbiologyevents)
 
-    /** Retrieve the label and features vector dataframe */
-    val featureDF = constructFeaturesWithLatestEvents(ss, saveDir, pat_indexdates, chartevents, icustays, predWindow)
+    /** Retrieve the label and features vector dataframe from latest events */
+    val featureDF = constructFeaturesWithLatestEvents(ss, saveDir, pat_indexdates, chartevents, icustays,
+                                                      predWindow, obsWindow)
 
-    /** Run basic logistic regression */
-    runLogisticRegression(featureDF)
+    /** Run logistic regression with param search on train/test split for validation */
+    /* Comment out since Random Forest gives better results */
+    runLogisticRegressionwithValidation(featureDF)
 
-    // Get vitals aggregated by hour
-    val agg_vitals = TimeframeOperations.aggregateChartEvents(ss, chartevents)
+    /** Run RandomForest with param search on train/test split for validation */
+    runRandomForestwithValidation(featureDF)
 
+    /** Commenting out the rest as using average vitals over an observation window size doesn't give as good results
+      * as using latest within observation window
+      */
+//    /** Retrieve the label and features vector dataframe from latest events */
+//    val aggfeatureDF = constructFeaturesWithAggregateEvents(ss, saveDir, pat_indexdates, chartevents, icustays,
+//                                                            predWindow, obsWindow)
+//
+//    /** Run logistic regression with param search on train/test split for validation */
+//    runLogisticRegressionwithValidation(aggfeatureDF)
+//
+//    /** Run RandomForest with param search on train/test split for validation */
+//    runRandomForestwithValidation(aggfeatureDF)
     ss.stop
   }
 

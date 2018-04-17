@@ -10,7 +10,7 @@ from sklearn.preprocessing import StandardScaler
 
 
 def get_data_from_svmlight(window):
-	svmdata = load_svmlight_file('../output/svmoutput/features{0}hour/features.libsvm'.format(window), n_features=11)
+	svmdata = load_svmlight_file('../output/svmoutput/features{0}hour/features.libsvm'.format(window), n_features=12)
 	x = svmdata[0]
 	y = svmdata[1]
 	return x, y
