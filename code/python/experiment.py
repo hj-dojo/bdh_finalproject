@@ -55,8 +55,8 @@ if __name__ == '__main__':
 		printMetrics(metrics)
 		scores.append(metrics)
 
-		classifier.getPrecisionRecallCurve(ytest, ypred, 'precision-recall-{0}.png'.format(w))
-		classifier.getROCCurve(ytest, ypred, metrics[1], 'roc-{0}.png'.format(w))
+		classifier.getPrecisionRecallCurve(ytest, ypred, 'charts/precision-recall-{0}.png'.format(w))
+		classifier.getROCCurve(ytest, ypred, metrics[1], 'charts/roc-{0}.png'.format(w))
 
 
 	scores = numpy.asarray(scores)
@@ -70,6 +70,6 @@ if __name__ == '__main__':
 	plt.xlabel('Prediction Window (Hours)')
 	plt.ylabel('Score')
 	plt.xticks([ i for i in range(5) ], windows)
-	plt.savefig('experiment.png')
+	plt.savefig('charts/experiment.png')
 
 
