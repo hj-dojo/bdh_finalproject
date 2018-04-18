@@ -45,11 +45,13 @@ def getPrecisionRecallCurve(testY, predY, filename):
 	plt.title('Precision-Recall Curve')
 	plt.savefig(filename)
 
+	return precision, recall
+
 
 def getROCCurve(testY, predY, auc, filename):
-	fpr, tpr, _ = roc_curve(testY, predY)
+	falsePosRate, truePosRate, _ = roc_curve(testY, predY)
 	plt.figure()
-	plt.plot(fpr, tpr, label='ROC Curve (area={0:.2f}'.format(auc))
+	plt.plot(falsePosRate, truePosRate, label='ROC Curve (area={0:.2f}'.format(auc))
 	plt.plot([0,1],[0,1], 'k--')
 	plt.xlim([0.,1.])
 	plt.ylim([0.,1.05])
@@ -58,6 +60,8 @@ def getROCCurve(testY, predY, auc, filename):
 	plt.title('Receiver Operating Characteristic')
 	plt.legend(loc='lower right')
 	plt.savefig(filename)
+
+	return falsePosRate, truePosRate
 
 
 def applyPredictionThresholding(probability_predictions, threshold=0.5):

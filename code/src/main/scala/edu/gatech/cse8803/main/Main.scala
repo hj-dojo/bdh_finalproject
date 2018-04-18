@@ -158,7 +158,8 @@ object Main {
                                   "FROM ICUSTAYS INNER JOIN PATIENTS " +
                                   "ON ICUSTAYS.SUBJECT_ID = PATIENTS.SUBJECT_ID " +
                                   "WHERE ICUSTAYS.DBSOURCE = 'metavision' " +
-                                  "AND ROUND(datediff(INTIME, PATIENTS.DOB)/365.242, 2) >= 15.0")
+                                  "AND ROUND(datediff(INTIME, PATIENTS.DOB)/365.242, 2) >= 15.0 " +
+                                  "AND ROUND(datediff(INTIME, PATIENTS.DOB)/365.424, 2) <= 90.0")
 
 //    println("Total icustays_filtered: " + icustays_filtered.count)
 //    icustays_filtered.take(5).foreach(println)

@@ -26,18 +26,19 @@ def printMetrics(metrics):
 
 if __name__ == '__main__':
 	
-	X, Y = get_data_from_svmlight('2')
-	#X = normalize(X)
-	X = StandardScaler(with_std=True, with_mean=False).fit_transform(X) # normalize feature set
+	# X, Y = get_data_from_svmlight('2')
+	# #X = normalize(X)
+	# X = StandardScaler(with_std=True, with_mean=False).fit_transform(X) # normalize feature set
 
-	print('K-Fold Cross-Validation Metrics')
-	printMetrics(validate.getKFoldMetrics(X, Y, k=5))
+	# print('K-Fold Cross-Validation Metrics')
+	# printMetrics(validate.getKFoldMetrics(X, Y, k=5))
 
-	print('Stratified K-Fold Cross-Validation Metrics')
-	printMetrics(validate.getStratifiedKFoldMetrics(X, Y, k=5))
+	# print('Stratified K-Fold Cross-Validation Metrics')
+	# printMetrics(validate.getStratifiedKFoldMetrics(X, Y, k=5))
 
 	windows = [1,2,4,6,8]
 	scores = []
+	roc_set = []
 
 	for w in windows:
 		X, Y = get_data_from_svmlight(str(w))
@@ -56,11 +57,12 @@ if __name__ == '__main__':
 		scores.append(metrics)
 
 		classifier.getPrecisionRecallCurve(ytest, yprob[:,1], 'charts/precision-recall-{0}.png'.format(w))
-		classifier.getROCCurve(ytest, yprob[:,1], metrics[1], 'charts/roc-{0}.png'.format(w))
+		roc_set.append(classifier.getROCCurve(ytest, yprob[:,1], metrics[1], 'charts/roc-{0}.png'.format(w)))
 
 
 	scores = numpy.asarray(scores)
 
+	# all metrics for experiment
 	plt.figure()
 	plt.plot(scores[:,1], label='AUC')
 	plt.plot(scores[:,2], label='Precision')
@@ -71,5 +73,18 @@ if __name__ == '__main__':
 	plt.ylabel('Score')
 	plt.xticks([ i for i in range(5) ], windows)
 	plt.savefig('charts/experiment.png')
+
+	# consolidated ROC curves
+	plt.figure()
+	for w in range(len(windows)):
+		plt.plot(roc_set[w][0], roc_set[w][1], label='{0}-Hour'.format(windows[w]))
+	plt.plot([0,1],[0,1], 'k--')
+	plt.xlim([0.,1.])
+	plt.ylim([0.,1.05])
+	plt.xlabel('False Positive Rate')
+	plt.ylabel('True Positive Rate')
+	plt.title('Receiver Operating Characteristic')
+	plt.legend(loc='lower right')
+	plt.savefig('charts/all-roc.png')
 
 
