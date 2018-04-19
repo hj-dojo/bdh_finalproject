@@ -1,6 +1,3 @@
-/**
-  * @Author Hazel John on 4/1/18.
-  */
 package bdhproject.sepsis.features
 
 import java.sql.Timestamp
