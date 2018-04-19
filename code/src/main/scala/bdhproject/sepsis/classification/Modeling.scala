@@ -1,7 +1,7 @@
 /**
   * @Author Hazel John on 4/1/18.
   */
-package edu.gatech.cse8803.classification
+package bdhproject.sepsis.classification
 
 import org.apache.spark.ml.classification._
 import org.apache.spark.ml.feature.{LabeledPoint, MinMaxScaler, StandardScaler}

@@ -1,12 +1,12 @@
 /**
   * @Author Hazel John on 3/31/18.
   */
-package edu.gatech.cse8803.ioutils
+package bdhproject.sepsis.ioutils
 
 
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import org.apache.spark.rdd.RDD
-import edu.gatech.cse8803.model.{ChartEvents, ICUStay, Prescriptions, MicrobiologyEvents}
+import bdhproject.sepsis.model.{ChartEvents, ICUStay, Prescriptions, MicrobiologyEvents}
 
 object ParquetUtils {
   def loadParquetAsDataFrame(ss: SparkSession, path: String): DataFrame = {

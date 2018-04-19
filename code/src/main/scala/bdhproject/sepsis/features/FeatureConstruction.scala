@@ -1,11 +1,11 @@
 /**
   * @Author Hazel John on 4/1/18.
   */
-package edu.gatech.cse8803.features
+package bdhproject.sepsis.features
 
 import java.sql.Timestamp
 
-import edu.gatech.cse8803.model.{ChartEvents, ICUStay}
+import bdhproject.sepsis.model.{ChartEvents, ICUStay}
 import org.apache.spark.ml.feature.LabeledPoint
 import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.sql._
@@ -95,8 +95,8 @@ object FeatureConstruction {
                                                .drop("rn", "chartTime")
 
     chart_features.createOrReplaceTempView("CHART_FEATURES")
-    //    println("chart_features  count: " + chart_features.count())
-    //    chart_features.printSchema()
+//    println("chart_features  count: " + chart_features.count())
+//    chart_features.printSchema()
 
     /* Calculate qSofa score */
     val qsofa_features = chart_features
@@ -106,11 +106,11 @@ object FeatureConstruction {
       .map(x => (x._1._1, x._1._2, 1, qSofaScore(x._2.toArray)))
       .toDF("hadmID", "label", "itemID", "value")
 
-//    qsofa_feature.printSchema()
-//    println("qsofa_features count " + qsofa_feature.count())
-//    val large_qsofa = qsofa_feature.filter(x => x.getDouble(3) >= 2)
+//    qsofa_features.printSchema()
+//    println("qsofa_features count " + qsofa_features.count())
+//    val large_qsofa = qsofa_features.filter(x => x.getDouble(3) >= 2)
 //    println("large qSofa  count: " + large_qsofa.count())
-//    val small_qsofa = qsofa_feature.filter(x => x.getDouble(3) < 2)
+//    val small_qsofa = qsofa_features.filter(x => x.getDouble(3) < 2)
 //    println("small qSofa  count: " + small_qsofa.count())
 
     val demographic_features = ss.sql("SELECT ICUSTAYS.hadmID as hadmID, label, " +

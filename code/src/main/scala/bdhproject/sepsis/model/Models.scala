@@ -1,8 +1,8 @@
 /**
- * @author Hang Su <hangsu@gatech.edu>.
- */
+  * @Author Hazel John on 4/1/18.
+  */
 
-package edu.gatech.cse8803.model
+package bdhproject.sepsis.model
 
 import java.sql.Timestamp
 

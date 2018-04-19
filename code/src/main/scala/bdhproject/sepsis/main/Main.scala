@@ -1,25 +1,23 @@
 /**
- * @author Hang Su <hangsu@gatech.edu>.
- */
+  * @Author Hazel John on 4/1/18.
+  */
+package bdhproject.sepsis.main
 
-package edu.gatech.cse8803.main
-
-import java.lang.InterruptedException
 import java.text.SimpleDateFormat
 import java.sql.Timestamp
 import java.io.File
 
-import edu.gatech.cse8803.features.FeatureConstruction._
-import edu.gatech.cse8803.ioutils.CSVUtils
-import edu.gatech.cse8803.ioutils.ParquetUtils
-import edu.gatech.cse8803.windowing.TimeframeOperations
-import edu.gatech.cse8803.model.{ChartEvents, ICUStay, Prescriptions, MicrobiologyEvents}
-import edu.gatech.cse8803.classification.Modeling._
-import org.apache.spark.sql.{SQLContext, SparkSession}
-import org.apache.spark.mllib.feature.StandardScaler
+import bdhproject.sepsis.features.FeatureConstruction._
+import bdhproject.sepsis.ioutils.CSVUtils
+import bdhproject.sepsis.ioutils.ParquetUtils
+import bdhproject.sepsis.windowing.TimeframeOperations
+import bdhproject.sepsis.model.{ChartEvents, ICUStay, MicrobiologyEvents, Prescriptions}
+import bdhproject.sepsis.classification.Modeling._
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
 import org.apache.commons.io.FileUtils
+import org.apache.spark.{SparkConf, SparkContext, SparkException}
 
 import scala.util.Try
 import scala.io.Source
@@ -35,7 +33,8 @@ object Main {
   val BLOOD_CULTURE_SPEC_ITEMID = 70012
 
   val usage = """
-    Usage: spark-submit --master <masterurl> --class edu.gatech.cse8803.main.Main <target jar> [--reload 0/1] [--savedir dirpath]
+    Usage: spark-submit --master <masterurl> --class bdhproject.sepsis3.main.Main
+        <target jar> [--reload 0/1] [--savedir dirpath] [--predwindow timeinhours] [--obswindow timeinhours]
   """
 
   def main(args: Array[String]) {
@@ -45,7 +44,13 @@ object Main {
     Logger.getLogger("org").setLevel(Level.WARN)
     Logger.getLogger("akka").setLevel(Level.WARN)
 
-    val ss = createSession("BDH Final Project", "local[*]")
+    /** Utilize the master url from spark default configuration or spark-submit parameter if available
+      * else use default
+      */
+    val masterURL = Try (new SparkContext(new SparkConf()).master).getOrElse("local[*]")
+    println("masterURL: " + masterURL)
+
+    var ss:SparkSession = createSession("BDH Final Project", masterURL)
 
     var reload = false
     var saveDir = "output"
@@ -85,13 +90,13 @@ object Main {
     //runLogisticRegressionwithValidation(featureDF)
 
     /** Run RandomForest with param search on train/test split for validation */
-    // runRandomForestwithValidation(featureDF)
+    runRandomForestwithValidation(featureDF)
 
     /** Run GradientBoostedTrees with param search on train/test split for validation */
-    // runGradientBoostedTreeswithValidation(featureDF)
+    runGradientBoostedTreeswithValidation(featureDF)
 
     /** Run MultilayerPerceptron with param search on train/test split for validation */
-    // runMultiLayerPerceptronwithValidation(featureDF)
+    runMultiLayerPerceptronwithValidation(featureDF)
 
     /** Commenting out the rest as using average vitals over an observation window size doesn't give as good results
       * as using latest within observation window
@@ -315,10 +320,11 @@ object Main {
   }
 
   def createSession(appName: String, masterUrl: String): SparkSession = {
-    val sparkSession = SparkSession
-      .builder.appName(appName)
-      .master(masterUrl)
-      .getOrCreate()
+
+    val sparkSession = SparkSession.builder
+                          .appName(appName)
+                          .master(masterUrl)
+                          .getOrCreate()
     sparkSession
   }
 

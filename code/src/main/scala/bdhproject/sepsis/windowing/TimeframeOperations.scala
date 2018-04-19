@@ -1,11 +1,11 @@
 /**
   * @Author Hazel John on 3/31/18.
   */
-package edu.gatech.cse8803.windowing
+package bdhproject.sepsis.windowing
 
 import java.sql.Timestamp
 
-import edu.gatech.cse8803.model.{ChartEvents, ICUStay, Prescriptions, MicrobiologyEvents}
+import bdhproject.sepsis.model.{ChartEvents, ICUStay, Prescriptions, MicrobiologyEvents}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 
