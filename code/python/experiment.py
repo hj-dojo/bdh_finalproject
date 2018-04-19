@@ -26,15 +26,14 @@ def printMetrics(metrics):
 
 if __name__ == '__main__':
 	
-	# X, Y = get_data_from_svmlight('2')
-	# #X = normalize(X)
-	# X = StandardScaler(with_std=True, with_mean=False).fit_transform(X) # normalize feature set
+	X, Y = get_data_from_svmlight('2')
+	X = StandardScaler(with_std=True, with_mean=False).fit_transform(X) # normalize feature set
 
-	# print('K-Fold Cross-Validation Metrics')
-	# printMetrics(validate.getKFoldMetrics(X, Y, k=5))
+	print('K-Fold Cross-Validation Metrics')
+	printMetrics(validate.getKFoldMetrics(X, Y, k=5))
 
-	# print('Stratified K-Fold Cross-Validation Metrics')
-	# printMetrics(validate.getStratifiedKFoldMetrics(X, Y, k=5))
+	print('Stratified K-Fold Cross-Validation Metrics')
+	printMetrics(validate.getStratifiedKFoldMetrics(X, Y, k=5))
 
 	windows = [1,2,4,6,8]
 	scores = []
@@ -42,12 +41,10 @@ if __name__ == '__main__':
 
 	for w in windows:
 		X, Y = get_data_from_svmlight(str(w))
-		#X = normalize(X)
 		X = StandardScaler(with_std=True, with_mean=False).fit_transform(X)  # normalize feature set
 
 		xtrain, xtest, ytrain, ytest = train_test_split(X, Y, test_size=0.25, random_state=numpy.random.RandomState(0))
 		ypred, yprob = classifier.predict(xtrain, ytrain, xtest)
-		#ypred = classifier.applyPredictionThresholding(yprob)
 		metrics = classifier.getMetrics(ytest, ypred)
 
 		print('{0}-Hour Window'.format(w))

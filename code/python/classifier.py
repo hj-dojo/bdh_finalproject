@@ -11,7 +11,7 @@ from sklearn.metrics import *
 def predict(trainX, trainY, testX):
 	# learner = GradientBoostingClassifier(n_estimators=100)
 	#learner = RandomForestClassifier(n_estimators=100,criterion="gini",max_depth=8, random_state=207336481)
-	learner = RandomForestClassifier(n_estimators=100, random_state=207336481)
+	learner = RandomForestClassifier(n_estimators=100)#, random_state=207336481)
 	# learner = AdaBoostClassifier(n_estimators=100)
 
 	# learner = DecisionTreeClassifier(min_samples_leaf=10)
@@ -40,7 +40,7 @@ def getPrecisionRecallCurve(testY, predY, filename):
 	plt.fill_between(recall, precision, step='post', alpha=0.2, color='b')
 	plt.xlabel('Recall')
 	plt.ylabel('Precision')
-	plt.xlim([0.0, 1.05])
+	plt.xlim([0.0, 1.0])
 	plt.ylim([0.0, 1.0])
 	plt.title('Precision-Recall Curve')
 	plt.savefig(filename)
@@ -54,7 +54,7 @@ def getROCCurve(testY, predY, auc, filename):
 	plt.plot(falsePosRate, truePosRate, label='ROC Curve (area={0:.2f}'.format(auc))
 	plt.plot([0,1],[0,1], 'k--')
 	plt.xlim([0.,1.])
-	plt.ylim([0.,1.05])
+	plt.ylim([0.,1.0])
 	plt.xlabel('False Positive Rate')
 	plt.ylabel('True Positive Rate')
 	plt.title('Receiver Operating Characteristic')

@@ -49,7 +49,7 @@ object Main {
 
     var reload = false
     var saveDir = "output"
-    var predWindow = 4
+    var predWindow = 8
     var obsWindow = 24
     if (args.length > 0) {
       args.sliding(2, 2).toList.collect {
@@ -85,13 +85,13 @@ object Main {
     //runLogisticRegressionwithValidation(featureDF)
 
     /** Run RandomForest with param search on train/test split for validation */
-    runRandomForestwithValidation(featureDF)
+    // runRandomForestwithValidation(featureDF)
 
     /** Run GradientBoostedTrees with param search on train/test split for validation */
-    runGradientBoostedTreeswithValidation(featureDF)
+    // runGradientBoostedTreeswithValidation(featureDF)
 
     /** Run MultilayerPerceptron with param search on train/test split for validation */
-    runMultiLayerPerceptronwithValidation(featureDF)
+    // runMultiLayerPerceptronwithValidation(featureDF)
 
     /** Commenting out the rest as using average vitals over an observation window size doesn't give as good results
       * as using latest within observation window
@@ -165,7 +165,7 @@ object Main {
                                   "ON ICUSTAYS.SUBJECT_ID = PATIENTS.SUBJECT_ID " +
                                   "WHERE ICUSTAYS.DBSOURCE = 'metavision' " +
                                   "AND ROUND(datediff(INTIME, PATIENTS.DOB)/365.242, 2) >= 15.0 " +
-                                  "AND ROUND(datediff(INTIME, PATIENTS.DOB)/365.424, 2) <= 90.0")
+                                  "AND ROUND(datediff(INTIME, PATIENTS.DOB)/365.424, 2) < 90.0")
 
 //    println("Total icustays_filtered: " + icustays_filtered.count)
 //    icustays_filtered.take(5).foreach(println)

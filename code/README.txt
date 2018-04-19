@@ -30,7 +30,7 @@ TO EXECUTE THE SPARK/SCALA ETL PROCESS
 		-MICROBIOLOGYEVENTS.CSV
 		-PATIENTS.CSV
 		-PRESCRIPTIONS.CSV
-2) Delete the entire 'output' folder (if this folder exists, the application assumes it can load pre-filtered parquet files)
+2) Delete the entire 'output' folder (if this folder exists, the application assumes it can load pre-filtered Parquet files)
 3) From the project root, run 'sbt compile run' for each prediction window (1, 2, 4, 6, 8)
 	-In Main.scala, main(), set 'predWindow=1' initially.
 		-The first execution will run for 45-60 minutes, and store filtered Parquet files
