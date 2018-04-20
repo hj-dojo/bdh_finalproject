@@ -33,7 +33,7 @@ def getMetrics(truelabels, predictions):
 	return numpy.asarray([accuracy, auc, precision, recall, f1])
 
 
-def getPrecisionRecallCurve(testY, predY, filename):
+def getPrecisionRecallCurve(testY, predY, filename, window):
 	precision, recall, _ = precision_recall_curve(testY, predY)
 	plt.figure()
 	plt.step(recall, precision, color='b', alpha=0.2, where='post')
@@ -42,13 +42,14 @@ def getPrecisionRecallCurve(testY, predY, filename):
 	plt.ylabel('Precision')
 	plt.xlim([0.0, 1.0])
 	plt.ylim([0.0, 1.0])
-	plt.title('Precision-Recall Curve')
+	plt.title('Precision-Recall Curve ({0}-Hour)'.format(window))
 	plt.savefig(filename)
+	plt.close()
 
 	return precision, recall
 
 
-def getROCCurve(testY, predY, auc, filename):
+def getROCCurve(testY, predY, auc, filename, window):
 	falsePosRate, truePosRate, _ = roc_curve(testY, predY)
 	plt.figure()
 	plt.plot(falsePosRate, truePosRate, label='ROC Curve (area={0:.2f}'.format(auc))
@@ -57,9 +58,10 @@ def getROCCurve(testY, predY, auc, filename):
 	plt.ylim([0.,1.0])
 	plt.xlabel('False Positive Rate')
 	plt.ylabel('True Positive Rate')
-	plt.title('Receiver Operating Characteristic')
+	plt.title('Receiver Operating Characteristic ({0}-Hour)'.format(window))
 	plt.legend(loc='lower right')
 	plt.savefig(filename)
+	plt.close()
 
 	return falsePosRate, truePosRate
 
