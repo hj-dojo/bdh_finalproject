@@ -30,7 +30,7 @@ def printMetrics(metrics):
 if __name__ == '__main__':
 	
 	if run_cross_validation:
-		X, Y = get_data_from_svmlight('2')
+		X, Y = get_data_from_svmlight('4')
 		X = StandardScaler(with_std=True, with_mean=False).fit_transform(X) # normalize feature set
 
 		print('K-Fold Cross-Validation Metrics')
@@ -41,8 +41,7 @@ if __name__ == '__main__':
 
 	windows = [1,2,4,6,8]
 	scores = []
-	prob_roc_set = [] # stores the different ROC metrics for probability-based classification (the curvy chart)
-	bin_roc_set = [] # stored the different ROC metrics for binary-based classification (the straight chart)
+	roc_curves = [] # stores the different ROC metrics for composite chart
 
 	for w in windows:
 		X, Y = get_data_from_svmlight(str(w))
@@ -50,7 +49,7 @@ if __name__ == '__main__':
 
 		xtrain, xtest, ytrain, ytest = train_test_split(X, Y, test_size=0.25, random_state=numpy.random.RandomState(0))
 		ypred, yprob = classifier.predict(xtrain, ytrain, xtest)
-		metrics = classifier.getMetrics(ytest, ypred)
+		metrics = classifier.getMetrics(ytest, ypred, yprob[:,1])
 
 		print('{0}-Hour Window'.format(w))
 		print('  Case:      ', Y[Y == 1].shape[0])
@@ -58,18 +57,15 @@ if __name__ == '__main__':
 		printMetrics(metrics)
 		scores.append(metrics)
 
-		classifier.getPrecisionRecallCurve(ytest, yprob[:,1], 'charts/precision-recall-prob-{0}.png'.format(w), w)
-		prob_roc_set.append(classifier.getROCCurve(ytest, yprob[:,1], metrics[1], 'charts/roc-prob-{0}.png'.format(w), w))
-
-		classifier.getPrecisionRecallCurve(ytest, ypred, 'charts/precision-recall-bin-{0}.png'.format(w), w)
-		bin_roc_set.append(classifier.getROCCurve(ytest, ypred, metrics[1], 'charts/roc-bin-{0}.png'.format(w), w))
+		classifier.getPrecisionRecallCurve(ytest, yprob[:,1], 'charts/precision-recall-{0}hr.png'.format(w), w)
+		roc_curves.append(classifier.getROCCurve(ytest, yprob[:,1], metrics[1], 'charts/roc-{0}hr.png'.format(w), w))
 
 
 	scores = numpy.asarray(scores)
 
 	# all metrics for experiment
 	plt.figure()
-	plt.plot(scores[:,1], label='AUC')
+	plt.plot(scores[:,1], label='AUROC')
 	plt.plot(scores[:,2], label='Precision')
 	plt.plot(scores[:,3], label='Recall')
 	plt.plot(scores[:,4], label='F1 Score')
@@ -83,29 +79,15 @@ if __name__ == '__main__':
 	# consolidated ROC curves (probability-based)
 	plt.figure()
 	for w in range(len(windows)):
-		plt.plot(prob_roc_set[w][0], prob_roc_set[w][1], label='{0}-Hour'.format(windows[w]))
+		plt.plot(roc_curves[w][0], roc_curves[w][1], label='{0}-Hour'.format(windows[w]))
 	plt.plot([0,1],[0,1], 'k--')
 	plt.xlim([0.,1.])
 	plt.ylim([0.,1.05])
 	plt.xlabel('False Positive Rate')
 	plt.ylabel('True Positive Rate')
-	plt.title('Receiver Operating Characteristic (Probability-Based)')
+	plt.title('Receiver Operating Characteristic')
 	plt.legend(loc='lower right')
-	plt.savefig('charts/all-roc-probability.png')
-	plt.close()
-
-	# consolidated ROC curves (binary-based)
-	plt.figure()
-	for w in range(len(windows)):
-		plt.plot(bin_roc_set[w][0], bin_roc_set[w][1], label='{0}-Hour'.format(windows[w]))
-	plt.plot([0,1],[0,1], 'k--')
-	plt.xlim([0.,1.])
-	plt.ylim([0.,1.05])
-	plt.xlabel('False Positive Rate')
-	plt.ylabel('True Positive Rate')
-	plt.title('Receiver Operating Characteristic (Binary-Based)')
-	plt.legend(loc='lower right')
-	plt.savefig('charts/all-roc-binary.png')
+	plt.savefig('charts/all-roc-curves.png')
 	plt.close()
 
 
