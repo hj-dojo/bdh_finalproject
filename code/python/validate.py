@@ -8,9 +8,9 @@ def getKFoldMetrics(X, Y, k=5):
 	metrics = numpy.zeros(5)
 	validator = KFold(n_splits=k)
 	for trainingIndex, testingIndex in validator.split(X):
-		predictions, _ = classifier.predict(X[trainingIndex], Y[trainingIndex], X[testingIndex])
+		predictions, proba = classifier.predict(X[trainingIndex], Y[trainingIndex], X[testingIndex])
 		#predictions = classifier.applyPredictionThresholding(predictions)
-		metrics += classifier.getMetrics(Y[testingIndex], predictions)
+		metrics += classifier.getMetrics(Y[testingIndex], predictions, proba[:,1])
 
 	metrics /= k # average results from each fold
 	return metrics
@@ -20,9 +20,9 @@ def getStratifiedKFoldMetrics(X, Y, k=5):
 
 	validator = StratifiedKFold(n_splits=k, shuffle=True, random_state=RANDOM_STATE)
 	for trainingIndex, testingIndex in validator.split(X, Y):
-		predictions, _ = classifier.predict(X[trainingIndex], Y[trainingIndex], X[testingIndex])
+		predictions, proba = classifier.predict(X[trainingIndex], Y[trainingIndex], X[testingIndex])
 		#predictions = classifier.applyPredictionThresholding(predictions)
-		metrics += classifier.getMetrics(Y[testingIndex], predictions)
+		metrics += classifier.getMetrics(Y[testingIndex], predictions, proba[:,1])
 
 	metrics /= k # average results from each fold
 	return metrics

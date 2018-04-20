@@ -23,9 +23,13 @@ def predict(trainX, trainY, testX):
 	learner.fit(trainX, trainY)
 	return learner.predict(testX), learner.predict_proba(testX)
 
-def getMetrics(truelabels, predictions):
+def getMetrics(truelabels, predictions, proba):
 	accuracy = accuracy_score(truelabels, predictions)
-	auc = roc_auc_score(truelabels, predictions)
+	auc = roc_auc_score(truelabels, proba)
+	# print("samples auc: ", roc_auc_score(truelabels, proba, average='samples'))
+	# print("macro auc: " , roc_auc_score(truelabels, proba, average='macro'))
+	# print("micro auc: ", roc_auc_score(truelabels, proba, average='micro'))
+	# print("weighted auc: ", roc_auc_score(truelabels, proba, average='weighted'))
 	precision = precision_score(truelabels, predictions)
 	recall = recall_score(truelabels, predictions)
 	f1 = f1_score(truelabels, predictions)

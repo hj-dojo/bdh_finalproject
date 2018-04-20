@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
 		xtrain, xtest, ytrain, ytest = train_test_split(X, Y, test_size=0.25, random_state=numpy.random.RandomState(0))
 		ypred, yprob = classifier.predict(xtrain, ytrain, xtest)
-		metrics = classifier.getMetrics(ytest, ypred)
+		metrics = classifier.getMetrics(ytest, ypred, yprob[:,1])
 
 		print('{0}-Hour Window'.format(w))
 		print('  Case:      ', Y[Y == 1].shape[0])
