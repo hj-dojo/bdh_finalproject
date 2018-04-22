@@ -1,34 +1,20 @@
 import numpy
 import matplotlib.pyplot as plt
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.svm import LinearSVC, SVC
-from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier, AdaBoostClassifier
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import *
 
 RANDOM_STATE = 545510477
 
 
 def predict(trainX, trainY, testX):
-	# learner = GradientBoostingClassifier(n_estimators=100)
-	#learner = RandomForestClassifier(n_estimators=100,criterion="gini",max_depth=8, random_state=207336481)
 	learner = RandomForestClassifier(n_estimators=100, random_state=RANDOM_STATE)
-	# learner = AdaBoostClassifier(n_estimators=100)
-
-	# learner = DecisionTreeClassifier(min_samples_leaf=10)
-	#learner = LogisticRegression()
-	# learner = LinearSVC()
-	# learner = SVC(kernel='poly')
-	# learner = KNeighborsClassifier(n_neighbors=3)
-
 	learner.fit(trainX, trainY)
 	return learner.predict(testX), learner.predict_proba(testX)
 
 def getMetrics(truelabels, predictions, probabilities):
 	accuracy = accuracy_score(truelabels, predictions)
 	auc = roc_auc_score(truelabels, probabilities)
-	precision = average_precision_score(truelabels, probabilities)
+	precision = precision_score(truelabels, predictions)
 	recall = recall_score(truelabels, predictions)
 	f1 = f1_score(truelabels, predictions)
 
