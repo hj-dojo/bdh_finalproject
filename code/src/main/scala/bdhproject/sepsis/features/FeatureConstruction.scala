@@ -75,7 +75,7 @@ object FeatureConstruction {
     icustay_df.createOrReplaceTempView("ICUSTAYS")
 
     val pred_window_dur = predWindowDurHrs * 3600
-    val obs_window_dur = obsWindowDurHrs * 3600
+    val obs_window_dur = (predWindowDurHrs+obsWindowDurHrs) * 3600
 
     /** Extract latest events in the observation window */
     val chartevents_filtered = ss.sql("SELECT CHARTEVENTS.hadmID as hadmID, label, itemID, chartTime, value " +
