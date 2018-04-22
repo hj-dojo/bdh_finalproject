@@ -7,11 +7,13 @@ from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier,
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import *
 
+RANDOM_STATE = 545510477
+
 
 def predict(trainX, trainY, testX):
 	# learner = GradientBoostingClassifier(n_estimators=100)
 	#learner = RandomForestClassifier(n_estimators=100,criterion="gini",max_depth=8, random_state=207336481)
-	learner = RandomForestClassifier(n_estimators=100)#, random_state=207336481)
+	learner = RandomForestClassifier(n_estimators=100, random_state=RANDOM_STATE)
 	# learner = AdaBoostClassifier(n_estimators=100)
 
 	# learner = DecisionTreeClassifier(min_samples_leaf=10)
@@ -23,14 +25,10 @@ def predict(trainX, trainY, testX):
 	learner.fit(trainX, trainY)
 	return learner.predict(testX), learner.predict_proba(testX)
 
-def getMetrics(truelabels, predictions, proba):
+def getMetrics(truelabels, predictions, probabilities):
 	accuracy = accuracy_score(truelabels, predictions)
-	auc = roc_auc_score(truelabels, proba)
-	# print("samples auc: ", roc_auc_score(truelabels, proba, average='samples'))
-	# print("macro auc: " , roc_auc_score(truelabels, proba, average='macro'))
-	# print("micro auc: ", roc_auc_score(truelabels, proba, average='micro'))
-	# print("weighted auc: ", roc_auc_score(truelabels, proba, average='weighted'))
-	precision = precision_score(truelabels, predictions)
+	auc = roc_auc_score(truelabels, probabilities)
+	precision = average_precision_score(truelabels, probabilities)
 	recall = recall_score(truelabels, predictions)
 	f1 = f1_score(truelabels, predictions)
 
@@ -45,7 +43,7 @@ def getPrecisionRecallCurve(testY, predY, filename, window):
 	plt.xlabel('Recall')
 	plt.ylabel('Precision')
 	plt.xlim([0.0, 1.0])
-	plt.ylim([0.0, 1.0])
+	plt.ylim([0.0, 1.05])
 	plt.title('Precision-Recall Curve ({0}-Hour)'.format(window))
 	plt.savefig(filename)
 	plt.close()
@@ -58,8 +56,8 @@ def getROCCurve(testY, predY, auc, filename, window):
 	plt.figure()
 	plt.plot(falsePosRate, truePosRate, label='ROC Curve (area={0:.2f}'.format(auc))
 	plt.plot([0,1],[0,1], 'k--')
-	plt.xlim([0.,1.])
-	plt.ylim([0.,1.0])
+	plt.xlim([0.,1.0])
+	plt.ylim([0.,1.05])
 	plt.xlabel('False Positive Rate')
 	plt.ylabel('True Positive Rate')
 	plt.title('Receiver Operating Characteristic ({0}-Hour)'.format(window))
