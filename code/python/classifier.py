@@ -28,7 +28,7 @@ def predict(trainX, trainY, testX):
 def getMetrics(truelabels, predictions, probabilities):
 	accuracy = accuracy_score(truelabels, predictions)
 	auc = roc_auc_score(truelabels, probabilities)
-	precision = average_precision_score(truelabels, probabilities)
+	precision = precision_score(truelabels, predictions)
 	recall = recall_score(truelabels, predictions)
 	f1 = f1_score(truelabels, predictions)
 
