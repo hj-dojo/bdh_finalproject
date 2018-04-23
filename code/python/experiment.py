@@ -13,7 +13,7 @@ from sklearn.preprocessing import normalize
 from sklearn.preprocessing import StandardScaler
 
 
-run_cross_validation = False
+run_cross_validation = True
 
 
 def get_data_from_svmlight(filepath):
