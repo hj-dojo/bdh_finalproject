@@ -3,7 +3,7 @@ Early Detection of Sepsis from Real-Time Patient Vitals
 
 This project seeks to accurately detect the onset of Sepsis using routine patient vital signals.
 
-###DATA
+## DATA
 We use data from the MIMIC-III (Medical Information Mart for Intensive Care III) database that holds deidentified health-related data associated with over forty thousand patients who stayed in critical care units of the Beth Israel Deaconess Medical Center between 2001 and 2012.
 The database includes information such as demographics, vital sign measurements made at the bedside (~1 data point per hour), laboratory test results, procedures, medications, caregiver notes, imaging reports, and mortality (both in and out of hospital).
 
@@ -26,10 +26,10 @@ The respective MIMIC-III database files associated to the above tables should be
 * PATIENTS.CSV
 * PRESCRIPTIONS.CSV
 
-###MODULES
+## MODULES
 The work we have done is organized into three distinct modules:
 
-####Pre-Processing
+### Pre-Processing
 We used a set of sql commands to generate our static input data files
 
 * **getAntibioticsNames.sql:** This query was run on the MIMIC III postgreSQL database to retrieve the the list of antibiotics names within the prescrition table (`antibiotics.txt`). The initial list of antibiotics was taken from [wikipedia](https://en.wikipedia.org/wiki/List_of_antibiotics).
@@ -37,7 +37,7 @@ We used a set of sql commands to generate our static input data files
 * **getSepsisICD9Codes.sql:** This query was used to retrieve the diagnosis code used to identify an real sepsis diagnosis. This could be used to validate the patients identifed to have onset of sepsis against patients with a diagnosis of sepsis (**NOT USED**)
 
 These results from these queries are also stored as static files in the **data** folder.
-####Big Data Pipeline
+### Big Data Pipeline
 This consists of the Apache Spark code in Scala that is used to do the data preparation, labeling, feature construction and test of some Spark classification algorithms. The scala code is in the `src` folder within the `bdhproject.sepsis` package. 
 
 We use **Apache Spark 2.3.0** and use the Core, ML and SQL libraries.
@@ -72,7 +72,7 @@ src
 * `FeatureConstruction.scala`: This contains the logic to construct the features retrieving data within the observation window (indexdate-predictionwindowhours-observationwindowhours to indexdate-predictionwindowhours). Two methods of feature construction was attempted, the first aggregated the routine vitals, the second selected the latest values. We found better results using the latest values.
 * `Modeling.scala`: This contains the different classification algorithms attempted. We first attempted simple logistic regression. Then we tried a few different classification methods with validation (train/test split of 0.67 to 0.33) and cross validation with parameter grid for best parameter selection based on Area under ROC as selection metric. StandardScaler was used to normalize the features before running the models. Classification metrics are returned for each classification method. We tried LogisticRegrestion, GradientBoostedTrees, MultiLayerPerceptron and RandomForest. RandomForest gave the best results.
 
-##### How to Run the code:
+#### How to Run the code:
 
 This can be run as a simple scala program by runing the following (and will use default parameters)
 ```
@@ -91,7 +91,7 @@ spark-submit --master <masterurl> --class bdhproject.sepsis3.main.Main
          <target jar> [--reload 0/1] [--savedir dirpath] [--predwindow timeinhours] [--obswindow timeinhours]
 ```
 
-####Classification
+### Classification
 This consists of the python code to run the selected classification algorithm and generates metrics and charts.
 
 The logic is handled in three specific files:
@@ -99,13 +99,13 @@ The logic is handled in three specific files:
 * `classifier.py`: This contains the logic for running the different classification algorithms (all except the selected one are commented out). It also holds the logic to retrieve the metrics as well as plot the PR and ROC curves.
 * `validate.py`: This holds the logic to run cross fold validation on the selected classification algorithm.
 
-#####Prerequisites
+#### Prerequisites
 * python 3 (tested with 3.6.3)
 * numpy (latest, tested with 1.13.3)
 * sklearn (latest, tested with 0.19.1 )
 * matplotlib (latest, tested with 2.1.0 )
 
-##### How to Run the code:
+#### How to Run the code:
 To recreate the reported results, we can use the features files included in the submitted files and run:
 ```
 cd <parentdir>/bdh_finalproject/code/python
@@ -115,7 +115,7 @@ K-Fold cross-validation (basic and stratified) results will be printed to the co
 Classifier metrics for each tested prediction window (1-, 2-, 4-, 6-, and 8-hours) will be printed to the console.
 Precision-Recall and AUC charts will be saved in the 'charts' folder.
 
-####Running the Complete Pipeline
+### Running the Complete Pipeline
 
 For the same observation window duration, but different prediction window sizes run the following after :
 
