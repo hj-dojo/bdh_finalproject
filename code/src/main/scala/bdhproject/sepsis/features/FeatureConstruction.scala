@@ -139,7 +139,8 @@ object FeatureConstruction {
 //    featuresDF.take(5).foreach(println)
 //    featuresDF.printSchema()
 
-    featuresDF.write.mode(SaveMode.Overwrite).format("libsvm").save(saveDir+"/svmoutput/features" + predWindowDurHrs.toString + "hour")
+    val filepath = saveDir+"/svmoutput" + obsWindowDurHrs.toString + "/features" + predWindowDurHrs.toString + "hour"
+    featuresDF.write.mode(SaveMode.Overwrite).format("libsvm").save(filepath)
 
     featuresDF
   }
@@ -175,7 +176,7 @@ object FeatureConstruction {
     icustay_df.createOrReplaceTempView("ICUSTAYS")
 
     val pred_window_dur = predWindowDurHrs * 3600
-    val obs_window_dur = obsWindowDurHrs * 3600
+    val obs_window_dur = (predWindowDurHrs+obsWindowDurHrs) * 3600
 
     /** Extract events in the observation window */
     val chartevents_filtered = ss.sql("SELECT CHARTEVENTS.hadmID as hadmID, label, itemID, value " +
@@ -236,7 +237,8 @@ object FeatureConstruction {
 //    featuresDF.take(5).foreach(println)
 //    featuresDF.printSchema()
 
-    featuresDF.write.mode(SaveMode.Overwrite).format("libsvm").save(saveDir+"/svmoutput/aggfeatures" + predWindowDurHrs.toString + "hour")
+    val filepath = saveDir+"/svmoutput" + obsWindowDurHrs.toString + "/aggfeatures" + predWindowDurHrs.toString + "hour"
+    featuresDF.write.mode(SaveMode.Overwrite).format("libsvm").save(filepath)
 
     featuresDF
   }

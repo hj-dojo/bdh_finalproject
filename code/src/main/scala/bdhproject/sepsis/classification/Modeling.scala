@@ -4,12 +4,16 @@ import org.apache.spark.ml.classification._
 import org.apache.spark.ml.feature.{LabeledPoint, MinMaxScaler, StandardScaler}
 import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, MulticlassClassificationEvaluator}
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.sql.functions._
 import org.apache.spark.ml.linalg.DenseVector
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 
+import scala.collection.mutable.ArrayBuffer
+
 object Modeling {
+
+  val TRAIN_PCT = 0.67
 
   def runLogisticRegression(featureDF: DataFrame) =
   {
@@ -107,14 +111,14 @@ object Modeling {
     * Evaluate classification metrics given the predictions
     * @param predictions
     */
-  def ReportBinaryClassificationMetrics(predictions: DataFrame) = {
+  def getBinaryClassificationMetrics(modelType:String, predictions: DataFrame) = {
 
     /* Retrieve predictions and labels */
-    val  predictionAndLabels = predictions.select("rawPrediction", "label")
+    val  rawpredictionAndLabels = predictions.select("rawPrediction", "label")
       .rdd.map(x => (x(0).asInstanceOf[DenseVector](1), x(1).asInstanceOf[Double]))
 
     /* Evaluate metrics */
-    val metrics = new BinaryClassificationMetrics(predictionAndLabels)
+    val metrics = new BinaryClassificationMetrics(rawpredictionAndLabels)
 
 //    // Precision by threshold
 //    val precision = metrics.precisionByThreshold
@@ -148,22 +152,26 @@ object Modeling {
 //      println(s"Threshold: $t, F-score: $f, Beta = 0.5")
 //    }
 
+    val evaluator = new MulticlassClassificationEvaluator()
+      .setLabelCol("label")
+      .setPredictionCol("prediction")
+
     // AUPRC
     val auPRC = metrics.areaUnderPR
-    println("Area under precision-recall curve = " + auPRC)
-
     // AUROC
     val auROC = metrics.areaUnderROC
-    println("Area under ROC = " + auROC)
 
-    val evaluator = new MulticlassClassificationEvaluator()
-                         .setLabelCol("label")
-                         .setPredictionCol("prediction")
+    /** Save the metrics */
+    /** Commented out metrics from MulticlassClassificationEvaluator as they don't seem correct */
+    val modelMetrics = ArrayBuffer(
+      Row(modelType, "Accuracy", evaluator.setMetricName("accuracy").evaluate(predictions)),
+      Row(modelType, "F1", evaluator.setMetricName("f1").evaluate(predictions)),
+      Row(modelType, "weightedPrecision", evaluator.setMetricName("weightedPrecision").evaluate(predictions)),
+      Row(modelType, "weightedRecall", evaluator.setMetricName("weightedRecall").evaluate(predictions)),
+      Row(modelType, "AUROC", auROC),
+      Row(modelType, "AUPRC", auPRC))
 
-    println("Weighted F-Measure: " + evaluator.setMetricName("f1").evaluate(predictions))
-    println("Weighted Precision: " + evaluator.setMetricName("weightedPrecision").evaluate(predictions))
-    println("weighted Recall: " + evaluator.setMetricName("weightedRecall").evaluate(predictions))
-    println("Accuracy : " + evaluator.setMetricName("accuracy").evaluate(predictions))
+    modelMetrics
   }
 
   /**
@@ -177,7 +185,7 @@ object Modeling {
     import ss.implicits._
 
     // Split data into training (60%) and test (40%)
-    val Array(training, test) = featureDF.randomSplit(Array(0.6, 0.4), seed = 11L)
+    val Array(training, test) = featureDF.randomSplit(Array(TRAIN_PCT, (1-TRAIN_PCT)), seed = 11L)
     training.cache()
 
     /** scale features */
@@ -206,7 +214,7 @@ object Modeling {
     val paramGrid = new ParamGridBuilder()
       .addGrid(lr.regParam, Array(0.1, 0.01))
       .addGrid(lr.fitIntercept)
-      .addGrid(lr.elasticNetParam, Array(0.0, 0.5, 1.0))
+      .addGrid(lr.elasticNetParam, Array(0.0, 0.5))
       .addGrid(lr.tol, Array(0.01, 0.05))
       .build()
 
@@ -227,15 +235,19 @@ object Modeling {
     // Run cross-validation, and choose the best set of parameters.
     val cvModel = cv.fit(scaledTraining)
 
+    val lrModel = cvModel.bestModel.asInstanceOf[LogisticRegressionModel]
+    println(s"LR Model coefficients:\n${lrModel.coefficients.toArray.mkString("\n")}")
+
     println("Best Params (Binomial Logistic Regression): ")
     println(cvModel.bestModel.extractParamMap())
+
+    training.unpersist(false)
 
     // Validate with the test
     val predictions = cvModel.transform(scaledTest)
 
-    /* Report metrics */
-    println("Metrics (Binomial LogisticRegression): ")
-    ReportBinaryClassificationMetrics(predictions)
+    /* Retrieve metrics */
+    getBinaryClassificationMetrics("LogisticRegression", predictions)
   }
 
   /**
@@ -249,7 +261,7 @@ object Modeling {
     import ss.implicits._
 
     // Split data into training (60%) and test (40%)
-    val Array(training, test) = featureDF.randomSplit(Array(0.6, 0.4), seed = 11L)
+    val Array(training, test) = featureDF.randomSplit(Array(TRAIN_PCT, (1-TRAIN_PCT)), seed = 11L)
     training.cache()
 
     /** scale features */
@@ -302,12 +314,13 @@ object Modeling {
     println("Best Params (RandomForestClassifier): ")
     println(cvModel.bestModel.extractParamMap())
 
+    training.unpersist(false)
+
     /* Fit the test */
     val predictions = cvModel.transform(scaledTest)
 
-    /* Report metrics */
-    println("Metrics (RandomForestClassifier): ")
-    ReportBinaryClassificationMetrics(predictions)
+    /* Retrieve metrics */
+    getBinaryClassificationMetrics("RandomForest", predictions)
   }
 
   /**
@@ -321,7 +334,7 @@ object Modeling {
     import ss.implicits._
 
     // Split data into training (60%) and test (40%)
-    val Array(training, test) = featureDF.randomSplit(Array(0.6, 0.4), seed = 11L)
+    val Array(training, test) = featureDF.randomSplit(Array(TRAIN_PCT, (1-TRAIN_PCT)), seed = 11L)
     training.cache()
 
     /** scale features */
@@ -350,8 +363,8 @@ object Modeling {
     // TrainValidationSplit will try all combinations of values and determine best model using
     // the evaluator.
     val paramGrid = new ParamGridBuilder()
-      .addGrid(gbt.maxBins, Array(13, 25, 31))
-      .addGrid(gbt.maxDepth, Array(3, 4, 6))
+      .addGrid(gbt.maxBins, Array(23, 31))
+      .addGrid(gbt.maxDepth, Array(3, 5))
       .build()
 
     // Define evaluator object
@@ -377,9 +390,10 @@ object Modeling {
     /* Fit the test */
     val predictions = cvModel.transform(scaledTest)
 
-    /* Report metrics */
-    println("Metrics (Gradient Boosted Trees): ")
-    ReportBinaryClassificationMetrics(predictions)
+    training.unpersist(false)
+
+    /* Retrieve metrics */
+    getBinaryClassificationMetrics("GradientBoostedTrees", predictions)
   }
 
   /**
@@ -393,7 +407,7 @@ object Modeling {
     import ss.implicits._
 
     // Split data into training (60%) and test (40%)
-    val Array(training, test) = featureDF.randomSplit(Array(0.6, 0.4), seed = 11L)
+    val Array(training, test) = featureDF.randomSplit(Array(TRAIN_PCT, (1-TRAIN_PCT)), seed = 11L)
     training.cache()
 
     /** scale features */
@@ -416,7 +430,7 @@ object Modeling {
     val layers = Array[Int](12, 8, 5, 2)
 
     // Run training algorithm to build the model
-    // Train a GBT model.
+    // Train a multilayerperceptron model.
     // create the trainer and set its parameters
     val mpc = new MultilayerPerceptronClassifier()
       .setLayers(layers)
@@ -428,7 +442,7 @@ object Modeling {
     // TrainValidationSplit will try all combinations of values and determine best model using
     // the evaluator.
     val paramGrid = new ParamGridBuilder()
-      .addGrid(mpc.tol, Array(0.0001, 0.001, 0.01, 0.1))
+      .addGrid(mpc.tol, Array(0.001, 0.01))
       .build()
 
     // Define evaluator object
@@ -454,8 +468,9 @@ object Modeling {
     /* Fit the test */
     val predictions = cvModel.transform(scaledTest)
 
+    training.unpersist(false)
+
     /* Report metrics */
-    println("Metrics (MultilayerPerceptron): ")
-    ReportBinaryClassificationMetrics(predictions)
+    getBinaryClassificationMetrics("MultiLayerPerceptron", predictions)
   }
 }

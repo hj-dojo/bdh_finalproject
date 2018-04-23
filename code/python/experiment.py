@@ -1,7 +1,11 @@
 import classifier
 import validate
 
+import os
 import numpy
+import glob
+import re
+import argparse
 import matplotlib.pyplot as plt
 from sklearn.datasets import load_svmlight_file
 from sklearn.model_selection import train_test_split
@@ -12,8 +16,9 @@ from sklearn.preprocessing import StandardScaler
 run_cross_validation = False
 
 
-def get_data_from_svmlight(window):
-	svmdata = load_svmlight_file('../output/svmoutput/features{0}hour/features.libsvm'.format(window), n_features=12)
+def get_data_from_svmlight(filepath):
+	filename = glob.glob(filepath+"/*.libsvm").pop()
+	svmdata = load_svmlight_file(filename, n_features=12)
 	x = svmdata[0]
 	y = svmdata[1]
 	return x, y
@@ -28,23 +33,28 @@ def printMetrics(metrics):
 
 
 if __name__ == '__main__':
-	
-	if run_cross_validation:
-		X, Y = get_data_from_svmlight('4')
-		X = StandardScaler(with_std=True, with_mean=False).fit_transform(X) # normalize feature set
 
-		print('K-Fold Cross-Validation Metrics')
-		printMetrics(validate.getKFoldMetrics(X, Y, k=5))
+	parser = argparse.ArgumentParser(prog="python3 experiment.py",
+									 description="Retrieve classification metrics")
+	parser.add_argument('--path', '-p', default='../output/svmoutput')
+	parser.add_argument('--obsWinHrs', '-o', default=24, type=int)
+	parsed_args = parser.parse_args()
+	filedir = parsed_args.path
+	obsWinHrs = parsed_args.obsWinHrs
 
-		print('Stratified K-Fold Cross-Validation Metrics')
-		printMetrics(validate.getStratifiedKFoldMetrics(X, Y, k=5))
+	# Create charts directory if it doesn't exist
+	os.makedirs('charts', exist_ok=True)
 
-	windows = [1,2,4,6,8]
+	windows = []
 	scores = []
 	roc_curves = [] # stores the different ROC metrics for composite chart
 
-	for w in windows:
-		X, Y = get_data_from_svmlight(str(w))
+	# Traverse directory containing feature files in svmlight format
+	for filepath in sorted(glob.glob(filedir + "/*")):
+		w = int(re.findall('\d+', filepath)[-1])
+		windows.append(w)
+
+		X, Y = get_data_from_svmlight(filepath)
 		X = StandardScaler(with_std=True, with_mean=False).fit_transform(X)  # normalize feature set
 
 		xtrain, xtest, ytrain, ytest = train_test_split(X, Y, test_size=0.25, random_state=numpy.random.RandomState(0))
@@ -60,6 +70,12 @@ if __name__ == '__main__':
 		classifier.getPrecisionRecallCurve(ytest, yprob[:,1], 'charts/precision-recall-{0}hr.png'.format(w), w)
 		roc_curves.append(classifier.getROCCurve(ytest, yprob[:,1], metrics[1], 'charts/roc-{0}hr.png'.format(w), w))
 
+		if run_cross_validation:
+			print('K-Fold Cross-Validation Metrics (pred window: {0}hr)'.format(w))
+			printMetrics(validate.getKFoldMetrics(X, Y, k=5))
+
+			print('Stratified K-Fold Cross-Validation Metrics (pred window: {0}hr)'.format(w))
+			printMetrics(validate.getStratifiedKFoldMetrics(X, Y, k=5))
 
 	scores = numpy.asarray(scores)
 
@@ -72,6 +88,7 @@ if __name__ == '__main__':
 	plt.legend()
 	plt.xlabel('Prediction Window (Hours)')
 	plt.ylabel('Score')
+	plt.title('All Metrics: {0}-Hr Observation Window'.format(obsWinHrs))
 	plt.xticks([ i for i in range(5) ], windows)
 	plt.savefig('charts/all-metrics.png')
 	plt.close()
@@ -85,7 +102,7 @@ if __name__ == '__main__':
 	plt.ylim([0.,1.05])
 	plt.xlabel('False Positive Rate')
 	plt.ylabel('True Positive Rate')
-	plt.title('Receiver Operating Characteristic')
+	plt.title('Receiver Operating Characteristic: {0}-Hr Observation Window'.format(obsWinHrs))
 	plt.legend(loc='lower right')
 	plt.savefig('charts/all-roc-curves.png')
 	plt.close()

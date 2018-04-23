@@ -10,12 +10,13 @@ import bdhproject.sepsis.ioutils.ParquetUtils
 import bdhproject.sepsis.windowing.TimeframeOperations
 import bdhproject.sepsis.model.{ChartEvents, ICUStay, MicrobiologyEvents, Prescriptions}
 import bdhproject.sepsis.classification.Modeling._
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
 import org.apache.commons.io.FileUtils
 import org.apache.spark.{SparkConf, SparkContext, SparkException}
 
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.util.Try
 import scala.io.Source
 
@@ -28,6 +29,8 @@ object Main {
   val dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
 
   val BLOOD_CULTURE_SPEC_ITEMID = 70012
+
+  val TEST_AGGREGATE_FEATURES = false
 
   val usage = """
     Usage: spark-submit --master <masterurl> --class bdhproject.sepsis3.main.Main
@@ -65,62 +68,73 @@ object Main {
     println("Running with output Dir: " + saveDir + ", reload flag: " + reload +
             ", prediction window: " + predWindow + ", observation window: " + obsWindow)
 
-    /** Retrieve static information about  antibiotics, sepsis icd9 codes and vitals itemids */
-    val (antibiotics, sepsis_codes, vitals_itemids) = loadStaticRawData(ss)
+    /** Retrieve static information about  antibiotics and vitals itemids */
+    val (antibiotics, vitals_itemids) = loadStaticRawData(ss)
     val saveDirFile = new File(saveDir)
 
     /** Load patient data including icustay info, chart, prescription and microbiology events */
     val (icustays, chartevents, prescriptions, microbiologyevents) = if (reload || !saveDirFile.exists)
-      loadRddRawData(ss, saveDir, antibiotics, sepsis_codes, vitals_itemids)
+      loadRddRawData(ss, saveDir, antibiotics, vitals_itemids)
     else
       loadRddSavedData(ss, saveDir)
 
     /** Extract Index dates */
     val pat_indexdates = TimeframeOperations.calculateIndexDate(ss, icustays, prescriptions, microbiologyevents)
 
-    /** Retrieve the label and features vector dataframe from latest events */
-    val featureDF = constructFeaturesWithLatestEvents(ss, saveDir, pat_indexdates, chartevents, icustays,
-                                                      predWindow, obsWindow)
-
-    /** Run logistic regression with param search on train/test split for validation */
-    /* Comment out since Random Forest gives better results */
-    //runLogisticRegressionwithValidation(featureDF)
-
-    /** Run RandomForest with param search on train/test split for validation */
-    runRandomForestwithValidation(featureDF)
-
-    /** Run GradientBoostedTrees with param search on train/test split for validation */
-    runGradientBoostedTreeswithValidation(featureDF)
-
-    /** Run MultilayerPerceptron with param search on train/test split for validation */
-    runMultiLayerPerceptronwithValidation(featureDF)
-
     /** Commenting out the rest as using average vitals over an observation window size doesn't give as good results
       * as using latest within observation window
       */
-//    /** Retrieve the label and features vector dataframe from latest events */
-//    val aggfeatureDF = constructFeaturesWithAggregateEvents(ss, saveDir, pat_indexdates, chartevents, icustays,
-//                                                            predWindow, obsWindow)
-//
-//    /** Run logistic regression with param search on train/test split for validation */
-//    runLogisticRegressionwithValidation(aggfeatureDF)
-//
-//    /** Run RandomForest with param search on train/test split for validation */
-//    runRandomForestwithValidation(aggfeatureDF)
+    if (TEST_AGGREGATE_FEATURES) {
+      /** Retrieve the label and features vector dataframe from latest events */
+      val aggfeatureDF = constructFeaturesWithAggregateEvents(ss, saveDir, pat_indexdates, chartevents, icustays,
+        predWindow, obsWindow)
+      /** Run multiple classification models and report results */
+      RunMultipleClassificationModels(aggfeatureDF)
+    }
+
+    /** Retrieve the label and features vector dataframe from latest events */
+    val featureDF = constructFeaturesWithLatestEvents(ss, saveDir, pat_indexdates, chartevents, icustays,
+                                                      predWindow, obsWindow)
+      /** Run multiple classification models and report results*/
+    RunMultipleClassificationModels(featureDF)
+
     ss.stop
+  }
+
+  /** Run different classification models
+    *
+    * @param featureDF
+    */
+  def RunMultipleClassificationModels(featureDF: DataFrame) = {
+
+    var metrics: ArrayBuffer[Row] = ArrayBuffer.empty[Row]
+
+    /** Run logistic regression with param search on train/test split for validation */
+    metrics ++= runLogisticRegressionwithValidation(featureDF)
+
+    /** Run GradientBoostedTrees with param search on train/test split for validation */
+    metrics ++= runGradientBoostedTreeswithValidation(featureDF)
+
+    /** Run MultilayerPerceptron with param search on train/test split for validation */
+    metrics ++= runMultiLayerPerceptronwithValidation(featureDF)
+
+    /** Run RandomForest with param search on train/test split for validation */
+    metrics ++= runRandomForestwithValidation(featureDF)
+
+    println("Metrics from different classification models:")
+    metrics.foreach(x => println(x))
   }
 
   /**
     * Retrieve information about antibiotics, sepsis icd9 codes and vital measurements itemids
     * @return
    */
-  def loadStaticRawData(ss: SparkSession): (Set[String], Set[String], Set[Int]) = {
+  def loadStaticRawData(ss: SparkSession): (Set[String], Set[Int]) = {
     import ss.implicits._
     val antibiotics = Source.fromFile("data/antibiotics.txt").getLines().map(_.toLowerCase).toSet[String]
-    val sepsis_codes = Source.fromFile("data/icd9_sepsis.txt").getLines().toSet[String]
     val vitals_defn = CSVUtils.loadCSVAsTable(ss, "data/vitals_definitions.csv")
     val vitals_itemids = ss.sql("SELECT itemid FROM vitals_definitions").map(s => s.getInt(0)).collect().toSet
-    (antibiotics, sepsis_codes, vitals_itemids)
+    (antibiotics, vitals_itemids)
   }
 
   /**
@@ -138,7 +152,7 @@ object Main {
     * @param ss
     * @return tuple of ICUStay, ChartEvents, Prescriptions and MicrobiologyEvents after processing RAW files
     */
-  def loadRddRawData(ss: SparkSession, saveDir:String, antibiotics: Set[String], sepsis_codes: Set[String],
+  def loadRddRawData(ss: SparkSession, saveDir:String, antibiotics: Set[String],
                      vitals_itemids: Set[Int]): (RDD[ICUStay], RDD[ChartEvents],
                      RDD[Prescriptions], RDD[MicrobiologyEvents]) = {
 

@@ -2,11 +2,9 @@ import AssemblyKeys._
 
 assemblySettings
 
-name := "big-data-project"
+name := "bdhproject_sepsis"
 
 version := "1.0"
-
-//scalaVersion := "2.10.6"
 
 scalaVersion := "2.11.8"
 
@@ -25,7 +23,7 @@ libraryDependencies ++= Seq(
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.3" % "test"
 
 
-mainClass in assembly := Some("edu.gatech.cse8803.main.Main")
+mainClass in assembly := Some("bdhproject.sepsis.main.Main")
 
 mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
 {
