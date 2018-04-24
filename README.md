@@ -85,7 +85,7 @@ To run it in cluster mode, first create the jar file:
 ```
 sbt compile package
 ```
-Then run (make sure to use **--reload 1** for first run ):
+Then run (make sure to use **--reload 1** for first run. Also specified "savedir" is overwritten when reload is 1):
 ```
 spark-submit --master <masterurl> --class bdhproject.sepsis3.main.Main
          <target jar> [--reload 0/1] [--savedir dirpath] [--predwindow timeinhours] [--obswindow timeinhours]
