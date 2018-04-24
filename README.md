@@ -40,7 +40,7 @@ These results from these queries are also stored as static files in the **data**
 ### Big Data Pipeline
 This consists of the Apache Spark code in Scala that is used to do the data preparation, labeling, feature construction and test of some Spark classification algorithms. The scala code is in the `src` folder within the `bdhproject.sepsis` package. 
 
-We use **Apache Spark 2.3.0** and used the spark-core, spark-mllib and spark-sql libraries.
+We use **Apache Spark 2.3.0** and used the spark-core, spark-mllib and spark-sql libraries. We also use **sbt version 0.13.9 and scala version 2.11.8**.
 
 The code structure is shown below:
 ```
